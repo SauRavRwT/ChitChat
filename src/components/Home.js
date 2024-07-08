@@ -10,7 +10,7 @@ function Home() {
   const [email, setEmail] = useState(null);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(user => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         setEmail(user.email);
       } else {
@@ -31,14 +31,26 @@ function Home() {
       console.error("Error logging out:", error);
     }
   };
-  
+
   return (
-    <div className="container mt-5 p-3 text-center">
-      <h1 className="fw-bold p-3">Welcome to the Home Page</h1>
-      <p className="fw-bold" id="userid">{email}</p>
-      <button className="btn btn-danger mt-3" onClick={handleLogout}>
-        Logout
-      </button>
+    <div className="container mt-5 p-3 d-flex justify-content-center bg-dark rounded-5">
+      <div className="row w-100 align-items-center text-center">
+        <div className="col-12 col-md-8">
+          <h1 className="fw-bold text-light">
+            Hello! <span id="userid">{email}</span>
+          </h1>
+          <button className="btn btn-danger mt-3 rounded-4" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
+        <div className="col-12 col-md-4 mt-3 mt-md-0">
+          <img
+            className="rounded-circle img-fluid"
+            src="https://avatars.githubusercontent.com/u/90666710?v=4"
+            alt="User Avatar"
+          />
+        </div>
+      </div>
     </div>
   );
 }
