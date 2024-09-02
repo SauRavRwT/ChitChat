@@ -18,7 +18,7 @@ function Login() {
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      alert("User logged in successfully");
+      // alert("User logged in successfully");
       navigate("/home");
     } catch (error) {
       setError(error.message);
