@@ -6,7 +6,7 @@ import { io } from "socket.io-client";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
-const socket = io("http://192.168.179.236:8080"); // Replace with your backend IP
+const socket = io("http://192.168.182.236:8080"); // Replace with your backend IP
 
 function Home() {
   const navigate = useNavigate();
@@ -69,7 +69,7 @@ function Home() {
   };
 
   const connectUser = (name, email) => {
-    fetch("http://192.168.179.236:8080/api/connect", {
+    fetch("http://192.168.182.236:8080/api/connect", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

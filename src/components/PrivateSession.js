@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { auth } from "../Firebase.js";
 import { io } from "socket.io-client";
 
-const socket = io("http://192.168.179.236:8080"); // Replace with your backend IP
+const socket = io("http://192.168.182.236:8080"); // Replace with your backend IP
 
 function PrivateSession() {
   const { recipientEmail } = useParams();
