@@ -7,7 +7,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
 // Socket connection
-const socket = io("http://192.168.2.113:8080"); // Replace with your backend IP
+const socket = io("http://192.168.179.236:8080"); // Replace with your backend IP
 
 function Home() {
   const navigate = useNavigate();
@@ -15,26 +15,25 @@ function Home() {
   const [userName, setUserName] = useState("");
   const [users, setUsers] = useState([]);
   const [message, setMessage] = useState("");
+  // eslint-disable-next-line
   const [recipientEmail, setRecipientEmail] = useState("");
   const [chat, setChat] = useState([]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        const name = user.email.split("@")[0]; // Set username from email
+        const name = user.email.split("@")[0];
         setEmail(user.email);
         setUserName(name);
 
-        connectUser(name, user.email); // Ensure user connects with email
+        connectUser(name, user.email);
 
-        // Join the user's room using their email
         socket.emit("join", { email: user.email });
       } else {
         setEmail(null);
       }
     });
 
-    // Listen for updates from the server
     socket.on("update_users", (updatedUsers) => {
       setUsers(updatedUsers);
     });
@@ -60,12 +59,12 @@ function Home() {
   };
 
   const connectUser = (name, email) => {
-    fetch("http://192.168.2.113:8080/api/connect", {
+    fetch("http://192.168.179.236:8080/api/connect", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ name, email }), // Send the email along with the name
+      body: JSON.stringify({ name, email }),
     })
       .then((response) => response.json())
       .then((data) => {
@@ -84,20 +83,26 @@ function Home() {
       sender_name: userName,
       recipient_email: recipientEmail,
       message: message,
-      sender_email: email,  // Include sender's email
+      sender_email: email,
     };
 
-    // Emit personal message
     socket.emit("send_personal_message", payload);
 
-    // Update chat log
     setChat((prevChat) => [
       ...prevChat,
       { sender: userName, recipient: recipientEmail, message },
     ]);
 
-    setMessage(""); // Clear message input after sending
+    setMessage("");
   };
+
+  const startPrivateSession = (recipientEmail) => {
+    navigate(`/private-session/${recipientEmail}`);
+  };
+
+  // const selectRecipient = (email) => {
+  //   setRecipientEmail(email);
+  // };
 
   return (
     <div>
@@ -135,18 +140,25 @@ function Home() {
           {users.map((user) => (
             <li key={user.email} className="d-flex justify-content-between my-2">
               {user.name} (Email: {user.email})
-              <button
-                className="btn btn-sm btn-outline-primary"
-                onClick={() => setRecipientEmail(user.email)}
-              >
-                Message {user.name}
-              </button>
+              <div>
+                {/* <button
+                  className="btn btn-sm btn-outline-primary me-2"
+                  onClick={() => selectRecipient(user.email)}
+                >
+                  Select to Message
+                </button> */}
+                <button
+                  className="btn btn-sm btn-primary"
+                  onClick={() => startPrivateSession(user.email)}
+                >
+                  Start Private Session
+                </button>
+              </div>
             </li>
           ))}
         </ul>
       </section>
 
-      {/* Input to send a message */}
       {recipientEmail && (
         <section className="row m-3">
           <h3 className="col-12">
@@ -170,7 +182,6 @@ function Home() {
         </section>
       )}
 
-      {/* Chat log */}
       <section className="row m-3">
         <h3 className="col-12">Chat Log</h3>
         <ul className="col-12 list-unstyled">
