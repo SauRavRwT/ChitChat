@@ -7,7 +7,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
 // Socket connection
-const socket = io("http://192.168.20.236:8080"); // Replace with your IP
+const socket = io("http://192.168.2.113:8080"); // Replace with your backend IP
 
 function Home() {
   const navigate = useNavigate();
@@ -15,36 +15,32 @@ function Home() {
   const [userName, setUserName] = useState("");
   const [users, setUsers] = useState([]);
   const [message, setMessage] = useState("");
-  const [userId, setUserId] = useState("");
-  const [recipientId, setRecipientId] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
   const [chat, setChat] = useState([]);
 
   useEffect(() => {
-    // Firebase Auth listener
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
+        const name = user.email.split("@")[0]; // Set username from email
         setEmail(user.email);
-        setUserName(user.email.split("@")[0]); // Setting username from email
-        connectUser(user.email.split("@")[0]); // Connect user to socket after login
+        setUserName(name);
+
+        connectUser(name, user.email); // Ensure user connects with email
+
+        // Join the user's room using their email
+        socket.emit("join", { email: user.email });
       } else {
         setEmail(null);
       }
     });
 
-    // Socket listeners
+    // Listen for updates from the server
     socket.on("update_users", (updatedUsers) => {
       setUsers(updatedUsers);
     });
 
     socket.on("receive_message", (data) => {
-      setChat((prevChat) => [
-        ...prevChat,
-        {
-          sender: data.sender,
-          recipient: data.recipient,
-          message: data.message,
-        },
-      ]);
+      setChat((prevChat) => [...prevChat, data]);
     });
 
     return () => {
@@ -63,35 +59,44 @@ function Home() {
     }
   };
 
-  const connectUser = (name) => {
-    fetch("http://192.168.20.236:8080/api/connect", {
-      // Replace with your IP
+  const connectUser = (name, email) => {
+    fetch("http://192.168.2.113:8080/api/connect", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, email }), // Send the email along with the name
     })
       .then((response) => response.json())
       .then((data) => {
         setUsers(data.users);
-        const newUser = data.users.find((u) => u.name === name);
-        setUserId(newUser.id);
       })
       .catch((error) => console.error("Error connecting user:", error));
   };
 
   const sendPersonalMessage = () => {
-    socket.emit("send_personal_message", {
-      message: message,
-      recipient_id: recipientId,
-      sender_id: userId,
-    });
+    if (!recipientEmail || !message) {
+      console.error("Recipient email or message is empty");
+      return;
+    }
 
+    const payload = {
+      sender_name: userName,
+      recipient_email: recipientEmail,
+      message: message,
+      sender_email: email,  // Include sender's email
+    };
+
+    // Emit personal message
+    socket.emit("send_personal_message", payload);
+
+    // Update chat log
     setChat((prevChat) => [
       ...prevChat,
-      { sender: userId, recipient: recipientId, message },
+      { sender: userName, recipient: recipientEmail, message },
     ]);
+
+    setMessage(""); // Clear message input after sending
   };
 
   return (
@@ -128,11 +133,11 @@ function Home() {
         <h2 className="col-12">Connected Users:</h2>
         <ul className="col-12 list-unstyled">
           {users.map((user) => (
-            <li key={user.id} className="d-flex justify-content-between my-2">
-              {user.name} (ID: {user.id})
+            <li key={user.email} className="d-flex justify-content-between my-2">
+              {user.name} (Email: {user.email})
               <button
                 className="btn btn-sm btn-outline-primary"
-                onClick={() => setRecipientId(user.id)}
+                onClick={() => setRecipientEmail(user.email)}
               >
                 Message {user.name}
               </button>
@@ -142,11 +147,11 @@ function Home() {
       </section>
 
       {/* Input to send a message */}
-      {recipientId && (
+      {recipientEmail && (
         <section className="row m-3">
           <h3 className="col-12">
             Send Message to{" "}
-            {users.find((user) => user.id === recipientId)?.name}
+            {users.find((user) => user.email === recipientEmail)?.name}
           </h3>
           <div className="col-12 col-md-8 mb-3">
             <input
@@ -154,28 +159,24 @@ function Home() {
               className="form-control"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Type your message here"
+              placeholder="Type your message..."
             />
-            <button
-              className="btn btn-primary w-100"
-              onClick={sendPersonalMessage}
-            >
-              Send Personal Message
+          </div>
+          <div className="col-12 col-md-4 mb-3">
+            <button className="btn btn-primary" onClick={sendPersonalMessage}>
+              Send
             </button>
           </div>
         </section>
       )}
 
+      {/* Chat log */}
       <section className="row m-3">
-        <h3 className="col-12">Chat Log:</h3>
+        <h3 className="col-12">Chat Log</h3>
         <ul className="col-12 list-unstyled">
-          {chat.map((msg, index) => (
+          {chat.map((entry, index) => (
             <li key={index} className="my-2">
-              {msg.sender === userId
-                ? "You"
-                : users.find((user) => user.id === msg.sender)?.name}{" "}
-              to {users.find((user) => user.id === msg.recipient)?.name}:{" "}
-              {msg.message}
+              <strong>{entry.sender}:</strong> {entry.message}
             </li>
           ))}
         </ul>
