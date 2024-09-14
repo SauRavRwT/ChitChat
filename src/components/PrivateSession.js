@@ -17,6 +17,12 @@ function PrivateSession() {
       if (user) {
         setCurrentUser(user);
         socket.emit("join_private_room", { email: user.email, recipientEmail });
+        
+        // Load private chat history from localStorage
+        const storedChat = localStorage.getItem(`private_chat_${user.email}_${recipientEmail}`);
+        if (storedChat) {
+          setMessages(JSON.parse(storedChat));
+        }
       } else {
         navigate("/login");
       }
@@ -24,17 +30,14 @@ function PrivateSession() {
 
     socket.on("private_message", (message) => {
       setMessages((prevMessages) => {
-        // Check if the message already exists in the array
+        // Check if the message already exists in the chat
         const messageExists = prevMessages.some(
-          (msg) =>
-            msg.sender === message.sender &&
-            msg.content === message.content &&
-            msg.timestamp === message.timestamp
+          (msg) => msg.timestamp === message.timestamp && msg.sender === message.sender
         );
-
-        // Only add the message if it doesn't already exist
         if (!messageExists) {
-          return [...prevMessages, message];
+          const newMessages = [...prevMessages, message];
+          localStorage.setItem(`private_chat_${currentUser.email}_${recipientEmail}`, JSON.stringify(newMessages));
+          return newMessages;
         }
         return prevMessages;
       });
@@ -56,7 +59,12 @@ function PrivateSession() {
         timestamp: new Date().toISOString(),
       };
       socket.emit("send_private_message", messageData);
-      setMessages((prevMessages) => [...prevMessages, messageData]);
+      setMessages((prevMessages) => {
+        const newMessages = [...prevMessages, messageData];
+        // Store updated chat in localStorage
+        localStorage.setItem(`private_chat_${currentUser.email}_${recipientEmail}`, JSON.stringify(newMessages));
+        return newMessages;
+      });
       setNewMessage("");
     }
   };
@@ -69,6 +77,9 @@ function PrivateSession() {
           {messages.map((msg, index) => (
             <div key={index} className={`mb-2 ${msg.sender === currentUser?.email ? 'text-end' : 'text-start'}`}>
               <strong>{msg.sender === currentUser?.email ? 'You' : 'Them'}:</strong> {msg.content}
+              <small className="text-muted ms-2">
+                {new Date(msg.timestamp).toLocaleString()}
+              </small>
             </div>
           ))}
         </div>

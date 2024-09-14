@@ -6,7 +6,6 @@ import { io } from "socket.io-client";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
-// Socket connection
 const socket = io("http://192.168.179.236:8080"); // Replace with your backend IP
 
 function Home() {
@@ -29,6 +28,12 @@ function Home() {
         connectUser(name, user.email);
 
         socket.emit("join", { email: user.email });
+
+        // Load chat history from localStorage
+        const storedChat = localStorage.getItem(`chat_${user.email}`);
+        if (storedChat) {
+          setChat(JSON.parse(storedChat));
+        }
       } else {
         setEmail(null);
       }
@@ -39,7 +44,12 @@ function Home() {
     });
 
     socket.on("receive_message", (data) => {
-      setChat((prevChat) => [...prevChat, data]);
+      setChat((prevChat) => {
+        const newChat = [...prevChat, data];
+        // Store updated chat in localStorage
+        localStorage.setItem(`chat_${email}`, JSON.stringify(newChat));
+        return newChat;
+      });
     });
 
     return () => {
@@ -47,7 +57,7 @@ function Home() {
       socket.off("update_users");
       socket.off("receive_message");
     };
-  }, []);
+  }, [email]);
 
   const handleLogout = async () => {
     try {
@@ -84,14 +94,17 @@ function Home() {
       recipient_email: recipientEmail,
       message: message,
       sender_email: email,
+      timestamp: new Date().toISOString(),
     };
 
     socket.emit("send_personal_message", payload);
 
-    setChat((prevChat) => [
-      ...prevChat,
-      { sender: userName, recipient: recipientEmail, message },
-    ]);
+    setChat((prevChat) => {
+      const newChat = [...prevChat, payload];
+      // Store updated chat in localStorage
+      localStorage.setItem(`chat_${email}`, JSON.stringify(newChat));
+      return newChat;
+    });
 
     setMessage("");
   };
@@ -187,7 +200,10 @@ function Home() {
         <ul className="col-12 list-unstyled">
           {chat.map((entry, index) => (
             <li key={index} className="my-2">
-              <strong>{entry.sender}:</strong> {entry.message}
+              <strong>{entry.sender_name || entry.sender}:</strong> {entry.message}
+              <small className="text-muted ms-2">
+                {new Date(entry.timestamp).toLocaleString()}
+              </small>
             </li>
           ))}
         </ul>
