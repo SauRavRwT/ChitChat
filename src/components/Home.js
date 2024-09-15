@@ -75,16 +75,17 @@ function Home() {
           <h3 className="fw-bold me-3">RTTC</h3>
           <div className="d-flex align-items-center">
             <img
+              src={`https://ui-avatars.com/api/?name=${userName}&background=random`}
+              alt={userName}
               className="rounded-circle me-2"
-              src="https://avatars.githubusercontent.com/u/90666710?v=4"
-              alt="User Avatar"
-              style={{ width: "40px", height: "40px" }}
+              width="40"
+              height="40"
             />
             <h5 className="mb-0">Hello, {email ? userName : "User"}</h5>
           </div>
         </div>
         <div className="col-4 col-md-2 text-end">
-          <button className="btn btn-danger" onClick={handleLogout}>
+          <button className="btn btn-danger rounded-3" onClick={handleLogout}>
             Logout
           </button>
         </div>
@@ -93,12 +94,12 @@ function Home() {
       <div className="row flex-grow-1">
         {/* Users List */}
         <div className="col-md-4 col-lg-3 border-end overflow-auto">
-          <h5 className="p-3">Active Users</h5>
+          <h5 className="p-3 fw-bold">Active Users</h5>
           <ul className="list-group list-group-flush">
             {users.map((user) => (
               <li
                 key={user.email}
-                className={`list-group-item list-group-item-action ${
+                className={`list-group-item list-group-item-action rounded-3 ${
                   selectedUser?.email === user.email ? "active" : ""
                 }`}
                 onClick={() => selectUser(user)}
@@ -130,8 +131,13 @@ function Home() {
               currentUserEmail={email}
             />
           ) : (
-            <div className="flex-grow-1 d-flex justify-content-center align-items-center">
-              <h4 className="text-muted">Select a user to start chatting</h4>
+            <div className="container d-flex flex-column justify-content-center align-items-center min-vh-100">
+              <div className="row text-center">
+                <h2 className="col-12 mb-3 display-1">RTTC</h2>
+                <p className="col-12 text-muted">
+                  Send and receive messages without keeping your phone online.
+                </p>
+              </div>
             </div>
           )}
         </div>
