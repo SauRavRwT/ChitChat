@@ -5,6 +5,7 @@ import Home from "./components/Home.js";
 import Signup from "./components/SignUp.js";
 import ProtectedRoute from "./components/ProtectedRoute.js";
 import PrivateSession from "./components/PrivateSession";
+import 'dotenv/config';
 
 function App() {
   return (

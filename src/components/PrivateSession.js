@@ -1,42 +1,29 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { auth } from "../Firebase.js";
+import React, { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
-const socket = io("http://192.168.182.236:8080"); // Replace with your backend IP
+const socket = io(process.env.REACT_APP_BACKEND_URL);
 
-function PrivateSession() {
-  const { recipientEmail } = useParams();
-  const navigate = useNavigate();
+function PrivateSession({ recipientEmail, recipientName, currentUserEmail }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  const [currentUser, setCurrentUser] = useState(null);
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        setCurrentUser(user);
-        socket.emit("join_private_room", { email: user.email, recipientEmail });
-        
-        // Load private chat history from localStorage
-        const storedChat = localStorage.getItem(`private_chat_${user.email}_${recipientEmail}`);
-        if (storedChat) {
-          setMessages(JSON.parse(storedChat));
-        }
-      } else {
-        navigate("/login");
-      }
-    });
+    socket.emit("join_private_room", { email: currentUserEmail, recipientEmail });
+
+    const storedChat = localStorage.getItem(`private_chat_${currentUserEmail}_${recipientEmail}`);
+    if (storedChat) {
+      setMessages(JSON.parse(storedChat));
+    }
 
     socket.on("private_message", (message) => {
       setMessages((prevMessages) => {
-        // Check if the message already exists in the chat
         const messageExists = prevMessages.some(
           (msg) => msg.timestamp === message.timestamp && msg.sender === message.sender
         );
         if (!messageExists) {
           const newMessages = [...prevMessages, message];
-          localStorage.setItem(`private_chat_${currentUser.email}_${recipientEmail}`, JSON.stringify(newMessages));
+          localStorage.setItem(`private_chat_${currentUserEmail}_${recipientEmail}`, JSON.stringify(newMessages));
           return newMessages;
         }
         return prevMessages;
@@ -44,16 +31,22 @@ function PrivateSession() {
     });
 
     return () => {
-      unsubscribe();
       socket.off("private_message");
-      socket.emit("leave_private_room", { email: currentUser?.email, recipientEmail });
+      socket.emit("leave_private_room", { email: currentUserEmail, recipientEmail });
     };
-  }, [navigate, recipientEmail, currentUser]);
+  }, [currentUserEmail, recipientEmail]);
 
-  const sendMessage = () => {
-    if (newMessage.trim() && currentUser) {
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  const sendMessage = (e) => {
+    e.preventDefault();
+    if (newMessage.trim() && currentUserEmail) {
       const messageData = {
-        sender: currentUser.email,
+        sender: currentUserEmail,
         recipient: recipientEmail,
         content: newMessage,
         timestamp: new Date().toISOString(),
@@ -61,8 +54,7 @@ function PrivateSession() {
       socket.emit("send_private_message", messageData);
       setMessages((prevMessages) => {
         const newMessages = [...prevMessages, messageData];
-        // Store updated chat in localStorage
-        localStorage.setItem(`private_chat_${currentUser.email}_${recipientEmail}`, JSON.stringify(newMessages));
+        localStorage.setItem(`private_chat_${currentUserEmail}_${recipientEmail}`, JSON.stringify(newMessages));
         return newMessages;
       });
       setNewMessage("");
@@ -70,34 +62,53 @@ function PrivateSession() {
   };
 
   return (
-    <div className="container mt-4">
-      <h2>Private Session with {recipientEmail}</h2>
-      <div className="card">
-        <div className="card-body" style={{ height: "400px", overflowY: "auto" }}>
-          {messages.map((msg, index) => (
-            <div key={index} className={`mb-2 ${msg.sender === currentUser?.email ? 'text-end' : 'text-start'}`}>
-              <strong>{msg.sender === currentUser?.email ? 'You' : 'Them'}:</strong> {msg.content}
-              <small className="text-muted ms-2">
-                {new Date(msg.timestamp).toLocaleString()}
-              </small>
-            </div>
-          ))}
-        </div>
-        <div className="card-footer">
-          <div className="input-group">
-            <input
-              type="text"
-              className="form-control"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type your message..."
-            />
-            <button className="btn btn-primary" onClick={sendMessage}>Send</button>
-          </div>
+    <>
+      <div className="p-3 border-bottom d-flex align-items-center">
+        <img
+          src={`https://ui-avatars.com/api/?name=${recipientName}&background=random`}
+          alt={recipientName}
+          className="rounded-circle me-2"
+          width="40"
+          height="40"
+        />
+        <div>
+          <h4 className="mb-0">{recipientName}</h4>
+          <small className="text-muted">{recipientEmail}</small>
         </div>
       </div>
-      <button className="btn btn-secondary mt-3" onClick={() => navigate('/')}>Back to Home</button>
-    </div>
+      <div className="flex-grow-1 overflow-auto p-3" style={{ maxHeight: "calc(100vh - 210px)" }}>
+        {messages.map((msg, index) => (
+          <div
+            key={index}
+            className={`mb-2 ${msg.sender === currentUserEmail ? 'text-end' : 'text-start'}`}
+          >
+            <div
+              className={`d-inline-block p-2 rounded-3 ${
+                msg.sender === currentUserEmail ? 'bg-primary text-white' : 'bg-light'
+              }`}
+            >
+              {msg.content}
+            </div>
+            <div className="small text-muted mt-1">
+              {new Date(msg.timestamp).toLocaleString()}
+            </div>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+      <form onSubmit={sendMessage} className="p-3 border-top">
+        <div className="input-group">
+          <input
+            type="text"
+            className="form-control"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type your message..."
+          />
+          <button type="submit" className="btn btn-primary">Send</button>
+        </div>
+      </form>
+    </>
   );
 }
 

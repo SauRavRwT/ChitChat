@@ -3,20 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { auth } from "../Firebase.js";
 import { signOut } from "firebase/auth";
 import { io } from "socket.io-client";
+import PrivateSession from "./PrivateSession";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
-const socket = io("http://192.168.182.236:8080"); // Replace with your backend IP
+const socket = io(process.env.REACT_APP_BACKEND_URL);
 
 function Home() {
   const navigate = useNavigate();
   const [email, setEmail] = useState(null);
   const [userName, setUserName] = useState("");
   const [users, setUsers] = useState([]);
-  const [message, setMessage] = useState("");
-  // eslint-disable-next-line
-  const [recipientEmail, setRecipientEmail] = useState("");
-  const [chat, setChat] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -24,18 +22,11 @@ function Home() {
         const name = user.email.split("@")[0];
         setEmail(user.email);
         setUserName(name);
-
         connectUser(name, user.email);
-
         socket.emit("join", { email: user.email });
-
-        // Load chat history from localStorage
-        const storedChat = localStorage.getItem(`chat_${user.email}`);
-        if (storedChat) {
-          setChat(JSON.parse(storedChat));
-        }
       } else {
         setEmail(null);
+        navigate("/login");
       }
     });
 
@@ -43,21 +34,11 @@ function Home() {
       setUsers(updatedUsers);
     });
 
-    socket.on("receive_message", (data) => {
-      setChat((prevChat) => {
-        const newChat = [...prevChat, data];
-        // Store updated chat in localStorage
-        localStorage.setItem(`chat_${email}`, JSON.stringify(newChat));
-        return newChat;
-      });
-    });
-
     return () => {
       unsubscribe();
       socket.off("update_users");
-      socket.off("receive_message");
     };
-  }, [email]);
+  }, [navigate]);
 
   const handleLogout = async () => {
     try {
@@ -69,7 +50,7 @@ function Home() {
   };
 
   const connectUser = (name, email) => {
-    fetch("http://192.168.182.236:8080/api/connect", {
+    fetch(`${process.env.REACT_APP_BACKEND_URL}/api/connect`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -83,131 +64,78 @@ function Home() {
       .catch((error) => console.error("Error connecting user:", error));
   };
 
-  const sendPersonalMessage = () => {
-    if (!recipientEmail || !message) {
-      console.error("Recipient email or message is empty");
-      return;
-    }
-
-    const payload = {
-      sender_name: userName,
-      recipient_email: recipientEmail,
-      message: message,
-      sender_email: email,
-      timestamp: new Date().toISOString(),
-    };
-
-    socket.emit("send_personal_message", payload);
-
-    setChat((prevChat) => {
-      const newChat = [...prevChat, payload];
-      // Store updated chat in localStorage
-      localStorage.setItem(`chat_${email}`, JSON.stringify(newChat));
-      return newChat;
-    });
-
-    setMessage("");
+  const selectUser = (user) => {
+    setSelectedUser(user);
   };
-
-  const startPrivateSession = (recipientEmail) => {
-    navigate(`/private-session/${recipientEmail}`);
-  };
-
-  // const selectRecipient = (email) => {
-  //   setRecipientEmail(email);
-  // };
 
   return (
-    <div>
-      <header className="container p-4 d-flex flex-column flex-md-row justify-content-between align-items-center">
-        <h3 className="fw-bold display-4 text-center text-md-start">RTTC</h3>
-        <button
-          className="btn btn-lg btn-danger mt-3 rounded-4"
-          onClick={handleLogout}
-        >
-          Logout
-        </button>
-      </header>
-
-      <div className="container d-flex justify-content-center">
-        <div className="row">
-          <div className="col col-lg">
-            <h1 className="fw-bold text-dark">
-              Hello, {email ? email : "User"}
-            </h1>
-          </div>
-          <div className="col col-lg">
+    <div className="container-fluid vh-100 d-flex flex-column">
+      <header className="row p-3 bg-light">
+        <div className="col-8 col-md-10 d-flex align-items-center">
+          <h3 className="fw-bold me-3">RTTC</h3>
+          <div className="d-flex align-items-center">
             <img
-              className="rounded-circle img-fluid"
+              className="rounded-circle me-2"
               src="https://avatars.githubusercontent.com/u/90666710?v=4"
               alt="User Avatar"
-              style={{ maxWidth: "150px" }}
+              style={{ width: "40px", height: "40px" }}
             />
+            <h5 className="mb-0">Hello, {email ? userName : "User"}</h5>
           </div>
         </div>
-      </div>
+        <div className="col-4 col-md-2 text-end">
+          <button className="btn btn-danger" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
+      </header>
 
-      <section className="row m-3">
-        <h2 className="col-12">Connected Users:</h2>
-        <ul className="col-12 list-unstyled">
-          {users.map((user) => (
-            <li key={user.email} className="d-flex justify-content-between my-2">
-              {user.name} (Email: {user.email})
-              <div>
-                {/* <button
-                  className="btn btn-sm btn-outline-primary me-2"
-                  onClick={() => selectRecipient(user.email)}
-                >
-                  Select to Message
-                </button> */}
-                <button
-                  className="btn btn-sm btn-primary"
-                  onClick={() => startPrivateSession(user.email)}
-                >
-                  Start Private Session
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <div className="row flex-grow-1">
+        {/* Users List */}
+        <div className="col-md-4 col-lg-3 border-end overflow-auto">
+          <h5 className="p-3">Active Users</h5>
+          <ul className="list-group list-group-flush">
+            {users.map((user) => (
+              <li
+                key={user.email}
+                className={`list-group-item list-group-item-action ${
+                  selectedUser?.email === user.email ? "active" : ""
+                }`}
+                onClick={() => selectUser(user)}
+              >
+                <div className="d-flex align-items-center">
+                  <img
+                    src={`https://ui-avatars.com/api/?name=${user.name}&background=random`}
+                    alt={user.name}
+                    className="rounded-circle me-2"
+                    width="40"
+                    height="40"
+                  />
+                  <div>
+                    <strong>{user.name}</strong>
+                    <br />
+                    <small>{user.email}</small>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
 
-      {recipientEmail && (
-        <section className="row m-3">
-          <h3 className="col-12">
-            Send Message to{" "}
-            {users.find((user) => user.email === recipientEmail)?.name}
-          </h3>
-          <div className="col-12 col-md-8 mb-3">
-            <input
-              type="text"
-              className="form-control"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Type your message..."
+        {/* Chat Area */}
+        <div className="col-md-8 col-lg-9 d-flex flex-column">
+          {selectedUser ? (
+            <PrivateSession
+              recipientEmail={selectedUser.email}
+              currentUserEmail={email}
             />
-          </div>
-          <div className="col-12 col-md-4 mb-3">
-            <button className="btn btn-primary" onClick={sendPersonalMessage}>
-              Send
-            </button>
-          </div>
-        </section>
-      )}
-
-      <section className="row m-3">
-        <h3 className="col-12">Chat Log</h3>
-        <ul className="col-12 list-unstyled">
-          {chat.map((entry, index) => (
-            <li key={index} className="my-2">
-              <strong>{entry.sender_name || entry.sender}:</strong> {entry.message}
-              <small className="text-muted ms-2">
-                {new Date(entry.timestamp).toLocaleString()}
-              </small>
-            </li>
-          ))}
-        </ul>
-      </section>
+          ) : (
+            <div className="flex-grow-1 d-flex justify-content-center align-items-center">
+              <h4 className="text-muted">Select a user to start chatting</h4>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
