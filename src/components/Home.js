@@ -15,6 +15,7 @@ function Home() {
   const [userName, setUserName] = useState("");
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedLanguage, setSelectedLanguage] = useState("English");
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -68,10 +69,14 @@ function Home() {
     setSelectedUser(user);
   };
 
+  const handleLanguageChange = (event) => {
+    setSelectedLanguage(event.target.value);
+  };
+
   return (
     <div className="container-fluid vh-100 d-flex flex-column">
       <header className="row p-3 bg-light">
-        <div className="col-8 col-md-10 d-flex align-items-center">
+        <div className="col-6 col-md-8 d-flex align-items-center">
           <h3 className="fw-bold me-3">RTTC</h3>
           <div className="d-flex align-items-center">
             <img
@@ -84,7 +89,24 @@ function Home() {
             <h5 className="mb-0">Hello, {email ? userName : "User"}</h5>
           </div>
         </div>
+        
+        {/* Language Dropdown */}
         <div className="col-4 col-md-2 text-end">
+          <select 
+            className="form-select"
+            value={selectedLanguage}
+            onChange={handleLanguageChange}
+          >
+            <option value="English">English</option>
+            <option value="Spanish">Spanish</option>
+            <option value="French">French</option>
+            <option value="German">German</option>
+            <option value="Chinese">Chinese</option>
+          </select>
+        </div>
+
+        {/* Logout Button */}
+        <div className="col-2 col-md-2 text-end">
           <button className="btn btn-danger rounded-3" onClick={handleLogout}>
             Logout
           </button>

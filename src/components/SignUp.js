@@ -2,19 +2,48 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../Firebase.js';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { getFirestore, doc, setDoc } from "firebase/firestore"; 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
 function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [dob, setDob] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
+  const [language, setLanguage] = useState('English');
+  const [profileImage, setProfileImage] = useState(null);
+  const [voiceGender, setVoiceGender] = useState('Male');
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const db = getFirestore();
 
   const handleSignUp = async (event) => {
     event.preventDefault();
+    
+    const birthDate = new Date(dob);
+    const age = new Date().getFullYear() - birthDate.getFullYear();
+    
+    if (age < 15) {
+      setError("Users must be at least 15 years old to sign up.");
+      return;
+    }
+    
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
+
+      await setDoc(doc(db, "users", uid), {
+        uid,
+        name,
+        dob,
+        contactNumber,
+        language,
+        profileImage: profileImage ? profileImage.name : null,
+        voiceGender,
+      });
+
       alert('User signed up successfully');
       navigate('/home');
     } catch (error) {
@@ -34,12 +63,111 @@ function SignUp() {
               <form onSubmit={handleSignUp}>
                 <div className="form-floating mb-3">
                   <input
+                    type="text"
+                    className="form-control rounded-3"
+                    id="floatingName"
+                    placeholder="Full Name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                  <label htmlFor="floatingName">Full Name</label>
+                </div>
+                <div className="form-floating mb-3">
+                  <input
+                    type="date"
+                    className="form-control rounded-3"
+                    id="floatingDob"
+                    value={dob}
+                    onChange={(e) => setDob(e.target.value)}
+                    required
+                  />
+                  <label htmlFor="floatingDob">Date of Birth</label>
+                </div>
+                <div className="form-floating mb-3">
+                  <input
+                    type="tel"
+                    className="form-control rounded-3"
+                    id="floatingContact"
+                    placeholder="Contact Number"
+                    value={contactNumber}
+                    onChange={(e) => setContactNumber(e.target.value)}
+                    required
+                  />
+                  <label htmlFor="floatingContact">Contact Number</label>
+                </div>
+                <div className="form-floating mb-3">
+                  <select
+                    className="form-control rounded-3"
+                    id="floatingLanguage"
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    required
+                  >
+                    <option value="English">English</option>
+                    <option value="Spanish">Spanish</option>
+                    <option value="French">French</option>
+                  </select>
+                  <label htmlFor="floatingLanguage">Preferred Language</label>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Upload Image</label>
+                  <input
+                    type="file"
+                    className="form-control"
+                    onChange={(e) => setProfileImage(e.target.files[0])}
+                  />
+                </div>
+                
+               {/* Voice Gender Section */}
+<div className="form-floating mb-3">
+  <div className="form-control rounded-3 p-3" style={{ height: '60px' }}>
+    <div className="d-flex justify-content-end">
+      <div className="form-check form-check-inline">
+        <input
+          className="form-check-input"
+          type="radio"
+          name="voiceGender"
+          id="maleVoice"
+          value="Male"
+          onChange={(e) => setVoiceGender(e.target.value)}
+          checked={voiceGender === 'Male'}
+          required
+        />
+        <label className="form-check-label ms-2" htmlFor="maleVoice"> 
+          Male
+        </label>
+      </div>
+      <div className="form-check form-check-inline">
+        <input
+          className="form-check-input"
+          type="radio"
+          name="voiceGender"
+          id="femaleVoice"
+          value="Female"
+          onChange={(e) => setVoiceGender(e.target.value)}
+          checked={voiceGender === 'Female'}
+          required
+        />
+        <label className="form-check-label ms-2" htmlFor="femaleVoice"> 
+          Female
+        </label>
+      </div>
+    </div>
+  </div>
+  <label className="pt-3">Voice Gender</label>
+</div>
+
+
+                <div className="form-floating mb-3">
+                  <input
                     type="email"
                     className="form-control rounded-3"
                     id="floatingInput"
                     placeholder="name@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    required
                   />
                   <label htmlFor="floatingInput">Email address</label>
                 </div>
@@ -51,6 +179,7 @@ function SignUp() {
                     placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    required
                   />
                   <label htmlFor="floatingPassword">Password</label>
                 </div>
