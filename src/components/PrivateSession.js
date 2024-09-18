@@ -14,13 +14,16 @@ function PrivateSession({ recipientEmail, currentUserEmail }) {
   };
 
   useEffect(() => {
+    // Join the private room on mount
     socket.emit("join_private_room", { email: currentUserEmail, recipientEmail });
 
+    // Load the chat history from local storage
     const storedChat = localStorage.getItem(`private_chat_${currentUserEmail}_${recipientEmail}`);
     if (storedChat) {
       setMessages(JSON.parse(storedChat));
     }
 
+    // Listen for incoming private messages
     socket.on("private_message", (message) => {
       setMessages((prevMessages) => {
         const messageExists = prevMessages.some(
@@ -35,6 +38,7 @@ function PrivateSession({ recipientEmail, currentUserEmail }) {
       });
     });
 
+    // Clean up event listener on component unmount
     return () => {
       socket.off("private_message");
       socket.emit("leave_private_room", { email: currentUserEmail, recipientEmail });
@@ -47,6 +51,7 @@ function PrivateSession({ recipientEmail, currentUserEmail }) {
     }
   }, [messages]);
 
+  // Function to handle sending messages
   const sendMessage = (e) => {
     e.preventDefault();
     if (newMessage.trim() && currentUserEmail) {
@@ -56,13 +61,16 @@ function PrivateSession({ recipientEmail, currentUserEmail }) {
         content: newMessage,
         timestamp: new Date().toISOString(),
       };
-      socket.emit("send_private_message", messageData);
+      // Emit message to the backend
+      socket.emit("send_private_message", messageData); // Send original message to backend
+
+      // Update the local state and store the message
       setMessages((prevMessages) => {
         const newMessages = [...prevMessages, messageData];
         localStorage.setItem(`private_chat_${currentUserEmail}_${recipientEmail}`, JSON.stringify(newMessages));
         return newMessages;
       });
-      setNewMessage("");
+      setNewMessage(""); // Clear input after sending
     }
   };
 
@@ -92,7 +100,13 @@ function PrivateSession({ recipientEmail, currentUserEmail }) {
                 msg.sender === currentUserEmail ? 'bg-primary text-white' : 'bg-secondary text-white'
               }`}
             >
-              {msg.content}
+              {/* Display original and translated messages */}
+              <div>{msg.content}</div>
+              {msg.translated_content && (
+                <div className="small text-muted mt-1">
+                  <em>{msg.translated_content}</em>
+                </div>
+              )}
             </div>
             <div className="small text-muted mt-1">
               {new Date(msg.timestamp).toLocaleString()}
