@@ -1,59 +1,96 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { auth } from '../Firebase.js';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, doc, setDoc } from "firebase/firestore"; 
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { auth } from "../Firebase.js";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
 function SignUp() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [dob, setDob] = useState('');
-  const [contactNumber, setContactNumber] = useState('');
-  const [language, setLanguage] = useState('English');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [dob, setDob] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
+  const [language, setLanguage] = useState("English");
   const [profileImage, setProfileImage] = useState(null);
-  const [voiceGender, setVoiceGender] = useState('Male');
+  const [profileImageUrl, setProfileImageUrl] = useState(null);
+  const [voiceGender, setVoiceGender] = useState("Male");
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const db = getFirestore();
+  const storage = getStorage();
+
+  const handleImageUpload = async (file) => {
+    if (!file) return;
+    const storageRef = ref(storage, `profileImages/${file.name}`);
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
+  };
 
   const handleSignUp = async (event) => {
     event.preventDefault();
-    
+
     const birthDate = new Date(dob);
     const age = new Date().getFullYear() - birthDate.getFullYear();
-    
+
     if (age < 15) {
       setError("Users must be at least 15 years old to sign up.");
       return;
     }
-    
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const uid = userCredential.user.uid;
 
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+
+      const uid = email;
+
+      // Handle profile image upload
+      const profileImageUrl = profileImage
+        ? await handleImageUpload(profileImage)
+        : null;
+
+      // Save user data with the image URL
       await setDoc(doc(db, "users", uid), {
         uid,
         name,
         dob,
         contactNumber,
         language,
-        profileImage: profileImage ? profileImage.name : null,
+        profileImage: profileImageUrl,
         voiceGender,
       });
 
-      alert('User signed up successfully');
-      navigate('/home');
+      alert("User signed up successfully");
+      navigate("/home");
     } catch (error) {
       setError(error.message);
     }
   };
 
+  // Image preview function
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    setProfileImage(file);
+
+    // Show a preview of the image
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfileImageUrl(reader.result);
+    };
+    if (file) {
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="App d-flex justify-content-center align-items-center min-vh-100">
-      <div className="modal modal-sheet position-static d-block p-4 py-md-5" role="dialog" id="modalSignin">
+      <div
+        className="modal modal-sheet position-static d-block p-4 py-md-5"
+        role="dialog"
+        id="modalSignin"
+      >
         <div className="modal-dialog" role="document">
           <div className="modal-content rounded-4 shadow">
             <div className="modal-header p-5 pb-4 border-bottom-0">
@@ -61,6 +98,46 @@ function SignUp() {
             </div>
             <div className="modal-body p-5 pt-0">
               <form onSubmit={handleSignUp}>
+                {/* Circular Image Upload */}
+                <div className="text-center mb-3">
+                  <label htmlFor="imageUpload" className="position-relative">
+                    <div
+                      className="rounded-circle"
+                      style={{
+                        width: "150px",
+                        height: "150px",
+                        backgroundColor: "#f0f0f0",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        overflow: "hidden",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {profileImageUrl ? (
+                        <img
+                          src={profileImageUrl}
+                          alt="Profile"
+                          className="rounded-circle"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        <span>Click to upload</span>
+                      )}
+                    </div>
+                  </label>
+                  <input
+                    type="file"
+                    id="imageUpload"
+                    style={{ display: "none" }} // Hide the actual file input
+                    onChange={handleImageChange}
+                    accept="image/*"
+                  />
+                </div>
                 <div className="form-floating mb-3">
                   <input
                     type="text"
@@ -110,54 +187,54 @@ function SignUp() {
                   </select>
                   <label htmlFor="floatingLanguage">Preferred Language</label>
                 </div>
-                <div className="mb-3">
-                  <label className="form-label">Upload Image</label>
-                  <input
-                    type="file"
-                    className="form-control"
-                    onChange={(e) => setProfileImage(e.target.files[0])}
-                  />
-                </div>
-                
-               {/* Voice Gender Section */}
-<div className="form-floating mb-3">
-  <div className="form-control rounded-3 p-3" style={{ height: '60px' }}>
-    <div className="d-flex justify-content-end">
-      <div className="form-check form-check-inline">
-        <input
-          className="form-check-input"
-          type="radio"
-          name="voiceGender"
-          id="maleVoice"
-          value="Male"
-          onChange={(e) => setVoiceGender(e.target.value)}
-          checked={voiceGender === 'Male'}
-          required
-        />
-        <label className="form-check-label ms-2" htmlFor="maleVoice"> 
-          Male
-        </label>
-      </div>
-      <div className="form-check form-check-inline">
-        <input
-          className="form-check-input"
-          type="radio"
-          name="voiceGender"
-          id="femaleVoice"
-          value="Female"
-          onChange={(e) => setVoiceGender(e.target.value)}
-          checked={voiceGender === 'Female'}
-          required
-        />
-        <label className="form-check-label ms-2" htmlFor="femaleVoice"> 
-          Female
-        </label>
-      </div>
-    </div>
-  </div>
-  <label className="pt-3">Voice Gender</label>
-</div>
 
+                {/* Voice Gender Section */}
+                <div className="form-floating mb-3">
+                  <div
+                    className="form-control rounded-3 p-3"
+                    style={{ height: "60px" }}
+                  >
+                    <div className="d-flex justify-content-end">
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="voiceGender"
+                          id="maleVoice"
+                          value="Male"
+                          onChange={(e) => setVoiceGender(e.target.value)}
+                          checked={voiceGender === "Male"}
+                          required
+                        />
+                        <label
+                          className="form-check-label ms-2"
+                          htmlFor="maleVoice"
+                        >
+                          Male
+                        </label>
+                      </div>
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="voiceGender"
+                          id="femaleVoice"
+                          value="Female"
+                          onChange={(e) => setVoiceGender(e.target.value)}
+                          checked={voiceGender === "Female"}
+                          required
+                        />
+                        <label
+                          className="form-check-label ms-2"
+                          htmlFor="femaleVoice"
+                        >
+                          Female
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <label className="pt-3">Voice Gender</label>
+                </div>
 
                 <div className="form-floating mb-3">
                   <input
@@ -184,7 +261,10 @@ function SignUp() {
                   <label htmlFor="floatingPassword">Password</label>
                 </div>
                 {error && <div className="alert alert-danger">{error}</div>}
-                <button className="w-30 mb-2 btn btn-lg btn-secondary rounded-3" type="submit">
+                <button
+                  className="w-30 mb-2 btn btn-lg btn-secondary rounded-3"
+                  type="submit"
+                >
                   Sign up
                 </button>
                 <p className="mb-0">
