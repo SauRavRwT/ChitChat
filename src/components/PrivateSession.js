@@ -3,7 +3,7 @@ import { io } from "socket.io-client";
 
 const socket = io(process.env.REACT_APP_BACKEND_URL);
 
-function PrivateSession({ recipientEmail, currentUserEmail }) {
+function PrivateSession({ recipientEmail, currentUserEmail, onBack }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef(null);
@@ -84,6 +84,9 @@ function PrivateSession({ recipientEmail, currentUserEmail }) {
   return (
     <>
       <div className="p-3 border-bottom d-flex align-items-center">
+        <button className="btn btn-outline-secondary me-3 rounded-5" onClick={onBack}>
+          <i className="bi bi-arrow-left"></i>
+        </button>
         {/* User's avatar and name */}
         <img
           src={`https://ui-avatars.com/api/?name=${getRecipientName(

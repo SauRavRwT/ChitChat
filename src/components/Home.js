@@ -87,6 +87,10 @@ function Home() {
     setSelectedLanguage(event.target.value);
   };
 
+  const handleBack = () => {
+    setSelectedUser(null);
+  };
+
   return (
     <div className="container-fluid vh-100 d-flex flex-column">
       <header className="row p-3 bg-light">
@@ -167,6 +171,7 @@ function Home() {
               recipientEmail={selectedUser.email}
               currentUserEmail={email}
               onNewMessage={handleNewMessage}
+              onBack={handleBack}
             />
           ) : (
             <div className="container d-flex flex-column justify-content-center align-items-center min-vh-100">
