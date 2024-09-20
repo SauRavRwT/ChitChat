@@ -16,6 +16,7 @@ function Home() {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState("English");
+  const [unseenMessages, setUnseenMessages] = useState({});
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -67,10 +68,27 @@ function Home() {
 
   const selectUser = (user) => {
     setSelectedUser(user);
+    setUnseenMessages((prev) => ({
+      ...prev,
+      [user.email]: 0, // Reset unseen messages count when chat is opened
+    }));
+  };
+
+  const handleNewMessage = (recipientEmail) => {
+    if (recipientEmail !== selectedUser?.email) {
+      setUnseenMessages((prev) => ({
+        ...prev,
+        [recipientEmail]: (prev[recipientEmail] || 0) + 1,
+      }));
+    }
   };
 
   const handleLanguageChange = (event) => {
     setSelectedLanguage(event.target.value);
+  };
+
+  const handleBack = () => {
+    setSelectedUser(null);
   };
 
   return (
@@ -89,10 +107,9 @@ function Home() {
             <h5 className="mb-0">Hello, {email ? userName : "User"}</h5>
           </div>
         </div>
-        
-        {/* Language Dropdown */}
+
         <div className="col-4 col-md-2 text-end">
-          <select 
+          <select
             className="form-select"
             value={selectedLanguage}
             onChange={handleLanguageChange}
@@ -105,7 +122,6 @@ function Home() {
           </select>
         </div>
 
-        {/* Logout Button */}
         <div className="col-2 col-md-2 text-end">
           <button className="btn btn-danger rounded-3" onClick={handleLogout}>
             Logout
@@ -114,7 +130,6 @@ function Home() {
       </header>
 
       <div className="row flex-grow-1">
-        {/* Users List */}
         <div className="col-md-4 col-lg-3 border-end overflow-auto">
           <h5 className="p-3 fw-bold">Active Users</h5>
           <ul className="list-group list-group-flush">
@@ -139,18 +154,24 @@ function Home() {
                     <br />
                     <small>{user.email}</small>
                   </div>
+                  {unseenMessages[user.email] > 0 && (
+                    <span className="badge bg-danger ms-2">
+                      {unseenMessages[user.email]}
+                    </span>
+                  )}
                 </div>
               </li>
             ))}
           </ul>
         </div>
 
-        {/* Chat Area */}
         <div className="col-md-8 col-lg-9 d-flex flex-column">
           {selectedUser ? (
             <PrivateSession
               recipientEmail={selectedUser.email}
               currentUserEmail={email}
+              onNewMessage={handleNewMessage}
+              onBack={handleBack}
             />
           ) : (
             <div className="container d-flex flex-column justify-content-center align-items-center min-vh-100">
