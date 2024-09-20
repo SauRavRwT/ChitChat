@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../Firebase.js";
+import { auth, db } from "../Firebase.js";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { doc, setDoc } from "firebase/firestore";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
@@ -14,21 +13,18 @@ function SignUp() {
   const [dob, setDob] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [language, setLanguage] = useState("English");
-  const [profileImage, setProfileImage] = useState(null);
-  const [profileImageUrl, setProfileImageUrl] = useState(null);
   const [voiceGender, setVoiceGender] = useState("Male");
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const db = getFirestore();
-  const storage = getStorage();
 
-  const handleImageUpload = async (file) => {
-    if (!file) return;
-    const storageRef = ref(storage, `profileImages/${file.name}`);
-    await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
-  };
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        navigate("/home");
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
 
   const handleSignUp = async (event) => {
     event.preventDefault();
@@ -44,43 +40,22 @@ function SignUp() {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
 
-      const uid = email;
+      const uid = auth.currentUser.uid;
 
-      // Handle profile image upload
-      const profileImageUrl = profileImage
-        ? await handleImageUpload(profileImage)
-        : null;
-
-      // Save user data with the image URL
+      // Save user data with avatar image URL
       await setDoc(doc(db, "users", uid), {
         uid,
         name,
         dob,
         contactNumber,
         language,
-        profileImage: profileImageUrl,
+        profileImage: `https://ui-avatars.com/api/?name=${name}&background=random`,
         voiceGender,
       });
 
       alert("User signed up successfully");
-      navigate("/home");
     } catch (error) {
       setError(error.message);
-    }
-  };
-
-  // Image preview function
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    setProfileImage(file);
-
-    // Show a preview of the image
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setProfileImageUrl(reader.result);
-    };
-    if (file) {
-      reader.readAsDataURL(file);
     }
   };
 
@@ -98,46 +73,17 @@ function SignUp() {
             </div>
             <div className="modal-body p-5 pt-0">
               <form onSubmit={handleSignUp}>
-                {/* Circular Image Upload */}
+                {/* Avatar Generation */}
                 <div className="text-center mb-3">
-                  <label htmlFor="imageUpload" className="position-relative">
-                    <div
-                      className="rounded-circle"
-                      style={{
-                        width: "150px",
-                        height: "150px",
-                        backgroundColor: "#f0f0f0",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        overflow: "hidden",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {profileImageUrl ? (
-                        <img
-                          src={profileImageUrl}
-                          alt="Profile"
-                          className="rounded-circle"
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                          }}
-                        />
-                      ) : (
-                        <span>Click to upload</span>
-                      )}
-                    </div>
-                  </label>
-                  <input
-                    type="file"
-                    id="imageUpload"
-                    style={{ display: "none" }} // Hide the actual file input
-                    onChange={handleImageChange}
-                    accept="image/*"
+                  <img
+                    src={`https://ui-avatars.com/api/?name=${name}&background=random`}
+                    alt={name}
+                    className="rounded-circle me-2"
+                    width="150"
+                    height="150"
                   />
                 </div>
+
                 <div className="form-floating mb-3">
                   <input
                     type="text"
