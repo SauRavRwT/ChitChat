@@ -17,7 +17,7 @@ function Home() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState("English");
   const [unseenMessages, setUnseenMessages] = useState({});
-
+  const [minimizedChats, setMinimizedChats] = useState([]);
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
@@ -70,8 +70,11 @@ function Home() {
     setSelectedUser(user);
     setUnseenMessages((prev) => ({
       ...prev,
-      [user.email]: 0, // Reset unseen messages count when chat is opened
+      [user.email]: 0,
     }));
+    setMinimizedChats((prev) =>
+      prev.filter((chat) => chat.email !== user.email)
+    );
   };
 
   const handleNewMessage = (recipientEmail) => {
@@ -83,12 +86,14 @@ function Home() {
     }
   };
 
+  const handleMinimize = () => {
+    if (selectedUser) {
+      setMinimizedChats((prev) => [...prev, selectedUser]);
+      setSelectedUser(null);
+    }
+  };
   const handleLanguageChange = (event) => {
     setSelectedLanguage(event.target.value);
-  };
-
-  const handleBack = () => {
-    setSelectedUser(null);
   };
 
   return (
@@ -171,7 +176,7 @@ function Home() {
               recipientEmail={selectedUser.email}
               currentUserEmail={email}
               onNewMessage={handleNewMessage}
-              onBack={handleBack}
+              onMinimize={handleMinimize}
             />
           ) : (
             <div className="container d-flex flex-column justify-content-center align-items-center min-vh-100">
@@ -184,6 +189,31 @@ function Home() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Minimized chats */}
+      <div className="position-fixed bottom-0 end-0 p-3 d-flex flex-row-reverse">
+        {minimizedChats.map((chat) => (
+          <div
+            key={chat.email}
+            className="bg-light border rounded-5 p-2 ms-2 cursor-pointer"
+            onClick={() => selectUser(chat)}
+          >
+            <img
+              src={`https://ui-avatars.com/api/?name=${chat.name}&background=random`}
+              alt={chat.name}
+              className="rounded-circle me-2"
+              width="30"
+              height="30"
+            />
+            <span>{chat.name}</span>
+            {unseenMessages[chat.email] > 0 && (
+              <span className="badge bg-danger ms-2">
+                {unseenMessages[chat.email]}
+              </span>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

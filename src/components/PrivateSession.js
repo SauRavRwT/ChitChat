@@ -3,14 +3,14 @@ import { io } from "socket.io-client";
 
 const socket = io(process.env.REACT_APP_BACKEND_URL);
 
-function PrivateSession({ recipientEmail, currentUserEmail, onBack }) {
+function PrivateSession({ recipientEmail, currentUserEmail, onNewMessage, onMinimize }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef(null);
 
   const getRecipientName = (email) => {
     if (!email) return "";
-    return email.split("@")[0]; // Extract the name from the email
+    return email.split("@")[0];
   };
 
   useEffect(() => {
@@ -38,6 +38,9 @@ function PrivateSession({ recipientEmail, currentUserEmail, onBack }) {
             `private_chat_${currentUserEmail}_${recipientEmail}`,
             JSON.stringify(newMessages)
           );
+          if (message.sender !== currentUserEmail) {
+            onNewMessage(recipientEmail);
+          }
           return newMessages;
         }
         return prevMessages;
@@ -46,12 +49,8 @@ function PrivateSession({ recipientEmail, currentUserEmail, onBack }) {
 
     return () => {
       socket.off("private_message");
-      socket.emit("leave_private_room", {
-        email: currentUserEmail,
-        recipientEmail,
-      });
     };
-  }, [currentUserEmail, recipientEmail]);
+  }, [currentUserEmail, recipientEmail, onNewMessage]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -84,10 +83,9 @@ function PrivateSession({ recipientEmail, currentUserEmail, onBack }) {
   return (
     <>
       <div className="p-3 border-bottom d-flex align-items-center">
-        <button className="btn btn-outline-secondary me-3 rounded-5" onClick={onBack}>
-          <i className="bi bi-arrow-left"></i>
+        <button className="btn btn-outline-secondary me-3 rounded-5" onClick={onMinimize}>
+          <i className="bi bi-dash-lg"></i>
         </button>
-        {/* User's avatar and name */}
         <img
           src={`https://ui-avatars.com/api/?name=${getRecipientName(
             recipientEmail
