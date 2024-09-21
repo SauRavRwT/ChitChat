@@ -38,13 +38,15 @@ function SignUp() {
     }
 
     try {
+      // Create user using Firebase Authentication
       await createUserWithEmailAndPassword(auth, email, password);
 
-      const uid = auth.currentUser.uid;
+      // Use email as the document ID in Firestore
+      const userEmail = email;
 
-      // Save user data with avatar image URL
-      await setDoc(doc(db, "users", uid), {
-        uid,
+      // Save user data with avatar image URL and other fields in Firestore
+      await setDoc(doc(db, "users", userEmail), {
+        email: userEmail,
         name,
         dob,
         contactNumber,
@@ -127,9 +129,12 @@ function SignUp() {
                     onChange={(e) => setLanguage(e.target.value)}
                     required
                   >
+                    <option value="English">Hindi</option>
                     <option value="English">English</option>
                     <option value="Spanish">Spanish</option>
                     <option value="French">French</option>
+                    <option value="German">German</option>
+                    <option value="Chinese">Chinese</option>
                   </select>
                   <label htmlFor="floatingLanguage">Preferred Language</label>
                 </div>

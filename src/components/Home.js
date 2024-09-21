@@ -4,44 +4,62 @@ import { auth } from "../Firebase.js";
 import { signOut } from "firebase/auth";
 import { io } from "socket.io-client";
 import PrivateSession from "./PrivateSession";
+import UserProfile from "./UserProfile";
+import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore"; 
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
 const socket = io(process.env.REACT_APP_BACKEND_URL);
+const db = getFirestore();
 
 function Home() {
   const navigate = useNavigate();
   const [email, setEmail] = useState(null);
-  const [userName, setUserName] = useState("");
+  const [userName, setUserName] = useState(""); 
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [selectedLanguage, setSelectedLanguage] = useState("English");
+  const [selectedLanguage, setSelectedLanguage] = useState("English"); 
   const [unseenMessages, setUnseenMessages] = useState({});
+  const [minimizedChats, setMinimizedChats] = useState([]);
+  const [showUserProfile, setShowUserProfile] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        const name = user.email.split("@")[0];
         setEmail(user.email);
-        setUserName(name);
-        connectUser(name, user.email);
-        socket.emit("join", { email: user.email });
+        
+        try {
+          const userDocRef = doc(db, "users", user.email.toLowerCase());
+          const userDocSnap = await getDoc(userDocRef);
+  
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            setUserName(userData.name || user.email.split("@")[0]);
+            setSelectedLanguage(userData.language || "English");
+            await connectUser(userData.name || user.email.split("@")[0], user.email);
+            socket.emit("join", { email: user.email });
+          } else {
+            console.log("No such user document!");
+          }
+        } catch (error) {
+          console.error("Error fetching user data from Firestore:", error);
+        }
       } else {
         setEmail(null);
         navigate("/login");
       }
     });
-
+  
     socket.on("update_users", (updatedUsers) => {
       setUsers(updatedUsers);
     });
-
+  
     return () => {
       unsubscribe();
       socket.off("update_users");
     };
-  }, [navigate]);
-
+  }, [navigate]); 
+  
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -51,27 +69,32 @@ function Home() {
     }
   };
 
-  const connectUser = (name, email) => {
-    fetch(`${process.env.REACT_APP_BACKEND_URL}/api/connect`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name, email }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        setUsers(data.users);
-      })
-      .catch((error) => console.error("Error connecting user:", error));
+  const connectUser = async (name, email) => {
+    try {
+      await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/connect`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, selectedLanguage }),
+      });
+      
+      const userRef = doc(db, "users", email.toLowerCase());
+      await updateDoc(userRef, { language: selectedLanguage });
+    } catch (error) {
+      console.error("Error connecting user:", error);
+    }
   };
 
   const selectUser = (user) => {
     setSelectedUser(user);
     setUnseenMessages((prev) => ({
       ...prev,
-      [user.email]: 0, // Reset unseen messages count when chat is opened
+      [user.email]: 0,
     }));
+    setMinimizedChats((prev) =>
+      prev.filter((chat) => chat.email !== user.email)
+    );
   };
 
   const handleNewMessage = (recipientEmail) => {
@@ -83,12 +106,19 @@ function Home() {
     }
   };
 
-  const handleLanguageChange = (event) => {
-    setSelectedLanguage(event.target.value);
+  const handleMinimize = () => {
+    if (selectedUser) {
+      setMinimizedChats((prev) => [...prev, selectedUser]);
+      setSelectedUser(null);
+    }
   };
 
-  const handleBack = () => {
-    setSelectedUser(null);
+  const handleProfileClick = () => {
+    setShowUserProfile(true);
+  };
+
+  const closeUserProfile = () => {
+    setShowUserProfile(false);
   };
 
   return (
@@ -103,23 +133,15 @@ function Home() {
               className="rounded-circle me-2"
               width="40"
               height="40"
+              onClick={handleProfileClick}
+              style={{ cursor: "pointer" }}
             />
-            <h5 className="mb-0">Hello, {email ? userName : "User"}</h5>
+            <h5 className="mb-0">Hello, {userName}</h5>
           </div>
         </div>
 
         <div className="col-4 col-md-2 text-end">
-          <select
-            className="form-select"
-            value={selectedLanguage}
-            onChange={handleLanguageChange}
-          >
-            <option value="English">English</option>
-            <option value="Spanish">Spanish</option>
-            <option value="French">French</option>
-            <option value="German">German</option>
-            <option value="Chinese">Chinese</option>
-          </select>
+          <p>{selectedLanguage}</p>
         </div>
 
         <div className="col-2 col-md-2 text-end">
@@ -136,9 +158,7 @@ function Home() {
             {users.map((user) => (
               <li
                 key={user.email}
-                className={`list-group-item list-group-item-action rounded-3 ${
-                  selectedUser?.email === user.email ? "active" : ""
-                }`}
+                className={`list-group-item list-group-item-action rounded-3 ${selectedUser?.email === user.email ? "active" : ""}`}
                 onClick={() => selectUser(user)}
               >
                 <div className="d-flex align-items-center">
@@ -166,12 +186,14 @@ function Home() {
         </div>
 
         <div className="col-md-8 col-lg-9 d-flex flex-column">
-          {selectedUser ? (
+          {showUserProfile ? (
+            <UserProfile email={email} onClose={closeUserProfile} />
+          ) : selectedUser ? (
             <PrivateSession
               recipientEmail={selectedUser.email}
               currentUserEmail={email}
               onNewMessage={handleNewMessage}
-              onBack={handleBack}
+              onMinimize={handleMinimize}
             />
           ) : (
             <div className="container d-flex flex-column justify-content-center align-items-center min-vh-100">
@@ -184,6 +206,21 @@ function Home() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="position-fixed bottom-0 end-0 p-3 d-flex flex-row-reverse">
+        {minimizedChats.map((chat) => (
+          <div
+            key={chat.email}
+            className="bg-light border rounded-5 p-2 ms-2 cursor-pointer"
+            onClick={() => selectUser(chat)}
+            style={{ minWidth: "200px" }}
+          >
+            <strong>{chat.name}</strong>
+            <br />
+            <small>{chat.email}</small>
+          </div>
+        ))}
       </div>
     </div>
   );
