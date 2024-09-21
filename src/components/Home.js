@@ -4,6 +4,7 @@ import { auth } from "../Firebase.js";
 import { signOut } from "firebase/auth";
 import { io } from "socket.io-client";
 import PrivateSession from "./PrivateSession";
+import UserProfile from "./UserProfile";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
@@ -18,6 +19,8 @@ function Home() {
   const [selectedLanguage, setSelectedLanguage] = useState("English");
   const [unseenMessages, setUnseenMessages] = useState({});
   const [minimizedChats, setMinimizedChats] = useState([]);
+  const [showUserProfile, setShowUserProfile] = useState(false);
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
@@ -92,8 +95,17 @@ function Home() {
       setSelectedUser(null);
     }
   };
+
   const handleLanguageChange = (event) => {
     setSelectedLanguage(event.target.value);
+  };
+
+  const handleProfileClick = () => {
+    setShowUserProfile(true);
+  };
+
+  const closeUserProfile = () => {
+    setShowUserProfile(false);
   };
 
   return (
@@ -108,6 +120,8 @@ function Home() {
               className="rounded-circle me-2"
               width="40"
               height="40"
+              onClick={handleProfileClick}
+              style={{ cursor: "pointer" }}
             />
             <h5 className="mb-0">Hello, {email ? userName : "User"}</h5>
           </div>
@@ -171,7 +185,10 @@ function Home() {
         </div>
 
         <div className="col-md-8 col-lg-9 d-flex flex-column">
-          {selectedUser ? (
+          {/* Conditionally render UserProfile or PrivateSession */}
+          {showUserProfile ? (
+            <UserProfile email={email} onClose={closeUserProfile} />
+          ) : selectedUser ? (
             <PrivateSession
               recipientEmail={selectedUser.email}
               currentUserEmail={email}

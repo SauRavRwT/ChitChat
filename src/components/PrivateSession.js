@@ -84,7 +84,7 @@ function PrivateSession({ recipientEmail, currentUserEmail, onNewMessage, onMini
     <>
       <div className="p-3 border-bottom d-flex align-items-center">
         <button className="btn btn-outline-secondary me-3 rounded-5" onClick={onMinimize}>
-          <i className="bi bi-dash-lg"></i>
+          <i className="bi bi-arrow-left"></i>
         </button>
         <img
           src={`https://ui-avatars.com/api/?name=${getRecipientName(
