@@ -15,10 +15,12 @@ const db = getFirestore();
 function Home() {
   const navigate = useNavigate();
   const [email, setEmail] = useState(null);
-  const [userName, setUserName] = useState(""); 
+  const [userName, setUserName] = useState("");
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [selectedLanguage, setSelectedLanguage] = useState("English"); 
+  const [selectedLanguage, setSelectedLanguage] = useState(
+    localStorage.getItem("selectedLanguage") || ""
+  );
   const [unseenMessages, setUnseenMessages] = useState({});
   const [minimizedChats, setMinimizedChats] = useState([]);
   const [showUserProfile, setShowUserProfile] = useState(false);
@@ -31,11 +33,15 @@ function Home() {
         try {
           const userDocRef = doc(db, "users", user.email.toLowerCase());
           const userDocSnap = await getDoc(userDocRef);
-  
+
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data();
             setUserName(userData.name || user.email.split("@")[0]);
-            setSelectedLanguage(userData.language || "English");
+            const language = userData.language;
+            if (language) {
+              setSelectedLanguage(language);
+              localStorage.setItem("selectedLanguage", language); // Store in localStorage
+            }
             await connectUser(userData.name || user.email.split("@")[0], user.email);
             socket.emit("join", { email: user.email });
           } else {
@@ -49,17 +55,17 @@ function Home() {
         navigate("/login");
       }
     });
-  
+
     socket.on("update_users", (updatedUsers) => {
       setUsers(updatedUsers);
     });
-  
+
     return () => {
       unsubscribe();
       socket.off("update_users");
     };
-  }, [navigate]); 
-  
+  }, [navigate]);
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -78,7 +84,7 @@ function Home() {
         },
         body: JSON.stringify({ name, email, selectedLanguage }),
       });
-      
+
       const userRef = doc(db, "users", email.toLowerCase());
       await updateDoc(userRef, { language: selectedLanguage });
     } catch (error) {
