@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { firestore, auth } from "../Firebase"; // Ensure correct Firebase import
+import { firestore } from "../Firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const UserProfile = ({ onClose, email }) => {
   const [name, setName] = useState("");
   const [dob, setDob] = useState("");
   const [contactNumber, setContactNumber] = useState("");
-  const [language, setLanguage] = useState(""); // Initialize with empty string
+  const [language, setLanguage] = useState("");
   const [voiceGender, setVoiceGender] = useState("Male");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(""); // Add error state
@@ -14,7 +14,8 @@ const UserProfile = ({ onClose, email }) => {
   useEffect(() => {
     const fetchUserDetails = async () => {
       try {
-        if (email) { // Ensure email is provided
+        if (email) {
+          // Ensure email is provided
           const docRef = doc(firestore, "users", email); // Use email as document ID
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
@@ -44,7 +45,8 @@ const UserProfile = ({ onClose, email }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (email) { // Ensure email is provided
+      if (email) {
+        // Ensure email is provided
         const userRef = doc(firestore, "users", email); // Use email as document ID
         await setDoc(
           userRef,
@@ -78,7 +80,8 @@ const UserProfile = ({ onClose, email }) => {
         className="btn-close position-absolute top-0 end-0 m-3"
         onClick={onClose}
       ></button>
-      {error && <div className="alert alert-danger">{error}</div>} {/* Display error if exists */}
+      {error && <div className="alert alert-danger">{error}</div>}{" "}
+      {/* Display error if exists */}
       <form onSubmit={handleSubmit}>
         {/* Avatar Generation */}
         <div className="text-center mb-3">
@@ -150,7 +153,10 @@ const UserProfile = ({ onClose, email }) => {
 
         {/* Voice Gender Section */}
         <div className="form-floating mb-3">
-          <div className="form-control rounded-3 p-3" style={{ height: "60px" }}>
+          <div
+            className="form-control rounded-3 p-3"
+            style={{ height: "60px" }}
+          >
             <div className="d-flex justify-content-end">
               <div className="form-check form-check-inline">
                 <input

@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../Firebase.js";
 import { signOut } from "firebase/auth";
 import { io } from "socket.io-client";
 import PrivateSession from "./PrivateSession";
 import UserProfile from "./UserProfile";
-import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore"; 
+import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
@@ -25,11 +25,32 @@ function Home() {
   const [minimizedChats, setMinimizedChats] = useState([]);
   const [showUserProfile, setShowUserProfile] = useState(false);
 
+  // Wrap connectUser in useCallback to avoid useEffect dependency warnings
+  const connectUser = useCallback(
+    async (name, email) => {
+      try {
+        await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/connect`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name, email, selectedLanguage }),
+        });
+
+        const userRef = doc(db, "users", email.toLowerCase());
+        await updateDoc(userRef, { language: selectedLanguage });
+      } catch (error) {
+        console.error("Error connecting user:", error);
+      }
+    },
+    [selectedLanguage] // Dependency on selectedLanguage so it updates when language changes
+  );
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         setEmail(user.email);
-        
+
         try {
           const userDocRef = doc(db, "users", user.email.toLowerCase());
           const userDocSnap = await getDoc(userDocRef);
@@ -42,7 +63,10 @@ function Home() {
               setSelectedLanguage(language);
               localStorage.setItem("selectedLanguage", language); // Store in localStorage
             }
-            await connectUser(userData.name || user.email.split("@")[0], user.email);
+            await connectUser(
+              userData.name || user.email.split("@")[0],
+              user.email
+            );
             socket.emit("join", { email: user.email });
           } else {
             console.log("No such user document!");
@@ -64,7 +88,7 @@ function Home() {
       unsubscribe();
       socket.off("update_users");
     };
-  }, [navigate]);
+  }, [navigate, connectUser]); // Add connectUser as a dependency
 
   const handleLogout = async () => {
     try {
@@ -72,23 +96,6 @@ function Home() {
       navigate("/login");
     } catch (error) {
       console.error("Error logging out:", error);
-    }
-  };
-
-  const connectUser = async (name, email) => {
-    try {
-      await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/connect`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name, email, selectedLanguage }),
-      });
-
-      const userRef = doc(db, "users", email.toLowerCase());
-      await updateDoc(userRef, { language: selectedLanguage });
-    } catch (error) {
-      console.error("Error connecting user:", error);
     }
   };
 
@@ -164,7 +171,9 @@ function Home() {
             {users.map((user) => (
               <li
                 key={user.email}
-                className={`list-group-item list-group-item-action rounded-3 ${selectedUser?.email === user.email ? "active" : ""}`}
+                className={`list-group-item list-group-item-action rounded-3 ${
+                  selectedUser?.email === user.email ? "active" : ""
+                }`}
                 onClick={() => selectUser(user)}
               >
                 <div className="d-flex align-items-center">
