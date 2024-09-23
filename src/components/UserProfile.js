@@ -9,22 +9,20 @@ const UserProfile = ({ onClose, email }) => {
   const [language, setLanguage] = useState("");
   const [voiceGender, setVoiceGender] = useState("Male");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(""); // Add error state
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchUserDetails = async () => {
       try {
         if (email) {
-          // Ensure email is provided
-          const docRef = doc(firestore, "users", email); // Use email as document ID
+          const docRef = doc(firestore, "users", email);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             const data = docSnap.data();
-            // Populate state with fetched data or fallback to defaults
             setName(data.name || "");
             setDob(data.dob || "");
             setContactNumber(data.contactNumber || "");
-            setLanguage(data.language || "English"); // Default to fetched language
+            setLanguage(data.language || "English");
             setVoiceGender(data.voiceGender || "Male");
           } else {
             setError("No user profile found!");
@@ -40,14 +38,13 @@ const UserProfile = ({ onClose, email }) => {
     };
 
     fetchUserDetails();
-  }, [email]); // Fetch user details when email changes
+  }, [email]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (email) {
-        // Ensure email is provided
-        const userRef = doc(firestore, "users", email); // Use email as document ID
+        const userRef = doc(firestore, "users", email);
         await setDoc(
           userRef,
           {
@@ -56,112 +53,122 @@ const UserProfile = ({ onClose, email }) => {
             contactNumber,
             language,
             voiceGender,
-            email, // Use the email passed as a prop
+            email,
           },
-          { merge: true } // Merge updates with existing data
+          { merge: true }
         );
         console.log("User profile updated successfully!");
-        onClose(); // Close the modal or sidebar after saving
+        onClose();
       } else {
         setError("No email provided for updating!");
       }
     } catch (error) {
-      setError("Error updating user profile: " + error.message); // Set error on update failure
+      setError("Error updating user profile: " + error.message);
     }
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div className="text-center p-4">Loading...</div>;
   }
 
   return (
-    <div className="modal-body p-5 pt-0">
-      <button
-        className="btn-close position-absolute top-0 end-0 m-3"
-        onClick={onClose}
-      ></button>
-      {error && <div className="alert alert-danger">{error}</div>}{" "}
-      {/* Display error if exists */}
-      <form onSubmit={handleSubmit}>
-        {/* Avatar Generation */}
-        <div className="text-center mb-3">
-          <img
-            src={`https://ui-avatars.com/api/?name=${name}&background=random`}
-            alt={name}
-            className="rounded-circle me-2"
-            width="150"
-            height="150"
-          />
-        </div>
+    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100">
+      <div
+        className="card shadow-sm rounded-4 m-2 p-2"
+        style={{ maxWidth: "700px", width: "100%" }}
+      >
+        <div className="card-body p-4">
+          <button
+            className="btn-close position-absolute top-0 end-0 m-3"
+            onClick={onClose}
+            aria-label="Close"
+          ></button>
+          <h2 className="card-title text-center mb-4">User Profile</h2>
+          {error && <div className="alert alert-danger">{error}</div>}
+          <form onSubmit={handleSubmit} className="needs-validation" noValidate>
+            <div className="text-center mb-4">
+              <img
+                src={`https://ui-avatars.com/api/?name=${name}&background=random&size=100`}
+                alt={name || "User"}
+                className="rounded-circle img-fluid"
+                style={{ width: "100px", height: "100px" }}
+              />
+            </div>
 
-        <div className="form-floating mb-3">
-          <input
-            type="text"
-            className="form-control rounded-3"
-            id="floatingName"
-            placeholder="Full Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-          <label htmlFor="floatingName">Full Name</label>
-        </div>
+            <div className="mb-3">
+              <label htmlFor="floatingName" className="form-label">
+                Full Name
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                id="floatingName"
+                placeholder="Full Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
 
-        <div className="form-floating mb-3">
-          <input
-            type="date"
-            className="form-control rounded-3"
-            id="floatingDob"
-            value={dob}
-            onChange={(e) => setDob(e.target.value)}
-            required
-          />
-          <label htmlFor="floatingDob">Date of Birth</label>
-        </div>
+            <div className="mb-3">
+              <label htmlFor="floatingDob" className="form-label">
+                Date of Birth
+              </label>
+              <input
+                type="date"
+                className="form-control"
+                id="floatingDob"
+                value={dob}
+                onChange={(e) => setDob(e.target.value)}
+                required
+              />
+            </div>
 
-        <div className="form-floating mb-3">
-          <input
-            type="tel"
-            className="form-control rounded-3"
-            id="floatingContact"
-            placeholder="Contact Number"
-            value={contactNumber}
-            onChange={(e) => setContactNumber(e.target.value)}
-            required
-          />
-          <label htmlFor="floatingContact">Contact Number</label>
-        </div>
+            <div className="mb-3">
+              <label htmlFor="floatingContact" className="form-label">
+                Contact Number
+              </label>
+              <input
+                type="tel"
+                className="form-control"
+                id="floatingContact"
+                placeholder="Contact Number"
+                value={contactNumber}
+                onChange={(e) => setContactNumber(e.target.value)}
+                required
+              />
+            </div>
 
-        <div className="form-floating mb-3">
-          <select
-            className="form-control rounded-3"
-            id="floatingLanguage"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            required
-          >
-            <option value="Hindi">Hindi</option>
-            <option value="English">English</option>
-            <option value="Spanish">Spanish</option>
-            <option value="French">French</option>
-            <option value="German">German</option>
-            <option value="Chinese">Chinese</option>
-            {/* Add more languages as needed */}
-          </select>
-          <label htmlFor="floatingLanguage">Preferred Language</label>
-        </div>
+            <div className="mb-3">
+              <label htmlFor="floatingLanguage" className="form-label">
+                Preferred Language
+              </label>
+              <select
+                className="form-select"
+                id="floatingLanguage"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                required
+              >
+                <option value="Hindi">Hindi</option>
+                <option value="English">English</option>
+                <option value="Spanish">Spanish</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Chinese">Chinese</option>
+              </select>
+            </div>
 
-        {/* Voice Gender Section */}
-        <div className="form-floating mb-3">
-          <div
-            className="form-control rounded-3 p-3"
-            style={{ height: "60px" }}
-          >
-            <div className="d-flex justify-content-end">
-              <div className="form-check form-check-inline">
+            <div className="mb-3">
+              <label className="form-label d-block">Voice Gender</label>
+              <div
+                className="btn-group w-100"
+                role="group"
+                aria-label="Voice Gender"
+              >
                 <input
-                  className="form-check-input"
                   type="radio"
+                  className="btn-check"
                   name="voiceGender"
                   id="maleVoice"
                   value="Male"
@@ -169,14 +176,13 @@ const UserProfile = ({ onClose, email }) => {
                   checked={voiceGender === "Male"}
                   required
                 />
-                <label className="form-check-label ms-2" htmlFor="maleVoice">
+                <label className="btn btn-outline-primary" htmlFor="maleVoice">
                   Male
                 </label>
-              </div>
-              <div className="form-check form-check-inline">
+
                 <input
-                  className="form-check-input"
                   type="radio"
+                  className="btn-check"
                   name="voiceGender"
                   id="femaleVoice"
                   value="Female"
@@ -184,32 +190,36 @@ const UserProfile = ({ onClose, email }) => {
                   checked={voiceGender === "Female"}
                   required
                 />
-                <label className="form-check-label ms-2" htmlFor="femaleVoice">
+                <label
+                  className="btn btn-outline-primary"
+                  htmlFor="femaleVoice"
+                >
                   Female
                 </label>
               </div>
             </div>
-          </div>
-          <label className="pt-3">Voice Gender</label>
-        </div>
 
-        <div className="form-floating mb-3">
-          <input
-            type="email"
-            className="form-control rounded-3"
-            id="floatingInput"
-            placeholder="name@example.com"
-            value={email} // Email is passed as prop, no need to set it here
-            required
-            disabled // Disable email field for editing since it's from Firebase Auth
-          />
-          <label htmlFor="floatingInput">Email address</label>
-        </div>
+            <div className="mb-3">
+              <label htmlFor="floatingInput" className="form-label">
+                Email address
+              </label>
+              <input
+                type="email"
+                className="form-control"
+                id="floatingInput"
+                placeholder="name@example.com"
+                value={email}
+                required
+                disabled
+              />
+            </div>
 
-        <button type="submit" className="btn btn-primary w-100">
-          Save
-        </button>
-      </form>
+            <button type="submit" className="btn btn-primary w-100 mt-3">
+              Save
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 };

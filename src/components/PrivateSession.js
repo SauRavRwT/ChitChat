@@ -1,9 +1,14 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { io } from "socket.io-client";
 
 const socket = io(process.env.REACT_APP_BACKEND_URL);
 
-function PrivateSession({ recipientEmail, currentUserEmail, onNewMessage, onMinimize }) {
+function PrivateSession({
+  recipientEmail,
+  currentUserEmail,
+  onNewMessage,
+  onMinimize,
+}) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef(null);
@@ -13,21 +18,34 @@ function PrivateSession({ recipientEmail, currentUserEmail, onNewMessage, onMini
     return email.split("@")[0];
   };
 
+  const storageKey = `private_chat_${currentUserEmail}_${recipientEmail}`;
+
+  const saveMessagesToStorage = useCallback(
+    (messages) => {
+      const messagesToStore = messages.map(
+        ({ sender, content, timestamp }) => ({
+          sender,
+          content,
+          timestamp,
+        })
+      );
+      localStorage.setItem(storageKey, JSON.stringify(messagesToStore));
+    },
+    [storageKey]
+  );
+
   useEffect(() => {
     socket.emit("join_private_room", {
       email: currentUserEmail,
       recipientEmail,
     });
 
-    const storedChat = localStorage.getItem(
-      `private_chat_${currentUserEmail}_${recipientEmail}`
-    );
+    const storedChat = localStorage.getItem(storageKey);
     if (storedChat) {
       setMessages(JSON.parse(storedChat));
     }
 
-    // Listen for incoming private messages
-    socket.on("private_message", (message) => {
+    const handlePrivateMessage = (message) => {
       setMessages((prevMessages) => {
         const messageExists = prevMessages.some(
           (msg) =>
@@ -35,10 +53,7 @@ function PrivateSession({ recipientEmail, currentUserEmail, onNewMessage, onMini
         );
         if (!messageExists) {
           const newMessages = [...prevMessages, message];
-          localStorage.setItem(
-            `private_chat_${currentUserEmail}_${recipientEmail}`,
-            JSON.stringify(newMessages)
-          );
+          saveMessagesToStorage(newMessages);
           if (message.sender !== currentUserEmail) {
             onNewMessage(recipientEmail);
           }
@@ -46,13 +61,20 @@ function PrivateSession({ recipientEmail, currentUserEmail, onNewMessage, onMini
         }
         return prevMessages;
       });
-    });
-
-    // Clean up event listener on component unmount
-    return () => {
-      socket.off("private_message");
     };
-  }, [currentUserEmail, recipientEmail, onNewMessage]);
+
+    socket.on("private_message", handlePrivateMessage);
+
+    return () => {
+      socket.off("private_message", handlePrivateMessage);
+    };
+  }, [
+    currentUserEmail,
+    recipientEmail,
+    onNewMessage,
+    saveMessagesToStorage,
+    storageKey,
+  ]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -60,7 +82,6 @@ function PrivateSession({ recipientEmail, currentUserEmail, onNewMessage, onMini
     }
   }, [messages]);
 
-  // Function to handle sending messages
   const sendMessage = (e) => {
     e.preventDefault();
     if (newMessage.trim() && currentUserEmail) {
@@ -70,26 +91,24 @@ function PrivateSession({ recipientEmail, currentUserEmail, onNewMessage, onMini
         content: newMessage,
         timestamp: new Date().toISOString(),
       };
-      // Emit message to the backend
-      socket.emit("send_private_message", messageData); // Send original message to backend
+      socket.emit("send_private_message", messageData);
 
-      // Update the local state and store the message
       setMessages((prevMessages) => {
         const newMessages = [...prevMessages, messageData];
-        localStorage.setItem(
-          `private_chat_${currentUserEmail}_${recipientEmail}`,
-          JSON.stringify(newMessages)
-        );
+        saveMessagesToStorage(newMessages);
         return newMessages;
       });
-      setNewMessage(""); // Clear input after sending
+      setNewMessage("");
     }
   };
 
   return (
-    <>
+    <div className="d-flex flex-column h-100">
       <div className="p-3 border-bottom d-flex align-items-center">
-        <button className="btn btn-outline-secondary me-3 rounded-5" onClick={onMinimize}>
+        <button
+          className="btn btn-outline-secondary me-3 rounded-circle"
+          onClick={onMinimize}
+        >
           <i className="bi bi-arrow-left"></i>
         </button>
         <img
@@ -101,11 +120,21 @@ function PrivateSession({ recipientEmail, currentUserEmail, onNewMessage, onMini
           width="40"
           height="40"
         />
-        <div>
-          <h4 className="mb-0" alt={getRecipientName(recipientEmail)}>
+        <div className="d-flex flex-column">
+          <h4
+            className="mb-0 text-truncate"
+            style={{ maxWidth: "150px" }}
+            title={getRecipientName(recipientEmail)}
+          >
             {getRecipientName(recipientEmail)}
           </h4>
-          <small className="text-muted">{recipientEmail}</small>
+          <small
+            className="text-muted text-truncate"
+            style={{ maxWidth: "150px" }}
+            title={recipientEmail}
+          >
+            {recipientEmail}
+          </small>
         </div>
       </div>
 
@@ -126,8 +155,8 @@ function PrivateSession({ recipientEmail, currentUserEmail, onNewMessage, onMini
                   ? "bg-primary text-white"
                   : "bg-secondary text-white"
               }`}
+              style={{ maxWidth: "80%", wordWrap: "break-word" }}
             >
-              {/* Display original and translated messages */}
               <div>{msg.content}</div>
               {msg.translated_content && (
                 <div className="small text-muted mt-1">
@@ -143,21 +172,21 @@ function PrivateSession({ recipientEmail, currentUserEmail, onNewMessage, onMini
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={sendMessage} className="p-3 border-top">
-        <div className="input-group gap-2">
+      <form onSubmit={sendMessage} className="p-3 border-top mt-auto">
+        <div className="input-group">
           <input
             type="text"
-            className="form-control rounded-4"
+            className="form-control rounded-start"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type your message..."
           />
-          <button type="submit" className="btn btn-success rounded-4">
+          <button type="submit" className="btn btn-success rounded-end">
             Send
           </button>
         </div>
       </form>
-    </>
+    </div>
   );
 }
 
