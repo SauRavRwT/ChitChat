@@ -23,10 +23,11 @@ function PrivateSession({
   const saveMessagesToStorage = useCallback(
     (messages) => {
       const messagesToStore = messages.map(
-        ({ sender, content, timestamp }) => ({
+        ({ sender, content, timestamp, translated_content }) => ({
           sender,
           content,
           timestamp,
+          translated_content,
         })
       );
       localStorage.setItem(storageKey, JSON.stringify(messagesToStore));
@@ -34,16 +35,18 @@ function PrivateSession({
     [storageKey]
   );
 
+  const loadMessagesFromStorage = useCallback(() => {
+    const storedChat = localStorage.getItem(storageKey);
+    return storedChat ? JSON.parse(storedChat) : [];
+  }, [storageKey]);
+
   useEffect(() => {
     socket.emit("join_private_room", {
       email: currentUserEmail,
       recipientEmail,
     });
 
-    const storedChat = localStorage.getItem(storageKey);
-    if (storedChat) {
-      setMessages(JSON.parse(storedChat));
-    }
+    setMessages(loadMessagesFromStorage());
 
     const handlePrivateMessage = (message) => {
       setMessages((prevMessages) => {
@@ -65,14 +68,24 @@ function PrivateSession({
 
     socket.on("private_message", handlePrivateMessage);
 
+    // Listen for storage events to sync messages across tabs
+    const handleStorageChange = (e) => {
+      if (e.key === storageKey) {
+        setMessages(JSON.parse(e.newValue));
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+
     return () => {
       socket.off("private_message", handlePrivateMessage);
+      window.removeEventListener("storage", handleStorageChange);
     };
   }, [
     currentUserEmail,
     recipientEmail,
     onNewMessage,
     saveMessagesToStorage,
+    loadMessagesFromStorage,
     storageKey,
   ]);
 
@@ -101,6 +114,21 @@ function PrivateSession({
       setNewMessage("");
     }
   };
+
+  // Periodic sync with localStorage
+  useEffect(() => {
+    const syncInterval = setInterval(() => {
+      const storedMessages = loadMessagesFromStorage();
+      setMessages((prevMessages) => {
+        if (JSON.stringify(prevMessages) !== JSON.stringify(storedMessages)) {
+          return storedMessages;
+        }
+        return prevMessages;
+      });
+    }, 5000); // Sync every 5 seconds
+
+    return () => clearInterval(syncInterval);
+  }, [loadMessagesFromStorage]);
 
   return (
     <div className="d-flex flex-column h-100">
