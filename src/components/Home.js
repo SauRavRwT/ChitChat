@@ -5,7 +5,13 @@ import { signOut } from "firebase/auth";
 import { io } from "socket.io-client";
 import PrivateSession from "./PrivateSession";
 import UserProfile from "./UserProfile";
-import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  updateDoc,
+  onSnapshot,
+} from "firebase/firestore"; // Import Firestore listener
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
@@ -16,7 +22,7 @@ function Home() {
   const navigate = useNavigate();
   const [email, setEmail] = useState(null);
   const [userName, setUserName] = useState("");
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState([]); // This is restored
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState(
     localStorage.getItem("selectedLanguage") || ""
@@ -25,26 +31,25 @@ function Home() {
   const [minimizedChats, setMinimizedChats] = useState([]);
   const [showUserProfile, setShowUserProfile] = useState(false);
 
-  // Wrap connectUser in useCallback to avoid useEffect dependency warnings
-  const connectUser = useCallback(
-    async (name, email) => {
-      try {
-        await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/connect`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ name, email, selectedLanguage }),
-        });
+  const connectUser = useCallback(async (name, email, language) => {
+    try {
+      await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/connect`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, selectedLanguage: language }),
+      });
 
-        const userRef = doc(db, "users", email.toLowerCase());
-        await updateDoc(userRef, { language: selectedLanguage });
-      } catch (error) {
-        console.error("Error connecting user:", error);
-      }
-    },
-    [selectedLanguage] // Dependency on selectedLanguage so it updates when language changes
-  );
+      const userRef = doc(db, "users", email.toLowerCase());
+      await updateDoc(userRef, { language: language });
+
+      // Emit socket event to notify others about the language change
+      socket.emit("language_updated", { email, language });
+    } catch (error) {
+      console.error("Error connecting user:", error);
+    }
+  }, []);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -61,11 +66,12 @@ function Home() {
             const language = userData.language;
             if (language) {
               setSelectedLanguage(language);
-              localStorage.setItem("selectedLanguage", language); // Store in localStorage
+              localStorage.setItem("selectedLanguage", language);
             }
             await connectUser(
               userData.name || user.email.split("@")[0],
-              user.email
+              user.email,
+              language
             );
             socket.emit("join", { email: user.email });
           } else {
@@ -80,15 +86,46 @@ function Home() {
       }
     });
 
+    // Firestore real-time listener for language updates
+    if (email) {
+      const userDocRef = doc(db, "users", email.toLowerCase());
+      const unsubscribeLanguageListener = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const newLanguage = docSnap.data().language;
+          if (newLanguage && newLanguage !== selectedLanguage) {
+            setSelectedLanguage(newLanguage);
+            localStorage.setItem("selectedLanguage", newLanguage);
+          }
+        }
+      });
+
+      // Clean up the listener when component unmounts
+      return () => {
+        unsubscribe();
+        unsubscribeLanguageListener();
+      };
+    }
+  }, [navigate, email, selectedLanguage, connectUser]);
+
+  // Listen for language updates via socket
+  useEffect(() => {
+    socket.on("language_updated", ({ email: updatedEmail, language }) => {
+      if (email === updatedEmail) {
+        setSelectedLanguage(language);
+        localStorage.setItem("selectedLanguage", language);
+      }
+    });
+
+    // Also listen for user updates in real-time and setUsers
     socket.on("update_users", (updatedUsers) => {
-      setUsers(updatedUsers);
+      setUsers(updatedUsers); // This restores real-time user updates
     });
 
     return () => {
-      unsubscribe();
+      socket.off("language_updated");
       socket.off("update_users");
     };
-  }, [navigate, connectUser]); // Add connectUser as a dependency
+  }, [email]);
 
   const handleLogout = async () => {
     try {
@@ -132,6 +169,10 @@ function Home() {
 
   const closeUserProfile = () => {
     setShowUserProfile(false);
+  };
+
+  const handleLanguageUpdate = (newLanguage) => {
+    setSelectedLanguage(newLanguage);
   };
 
   return (
@@ -202,7 +243,12 @@ function Home() {
 
         <div className="col-md-8 col-lg-9 d-flex flex-column">
           {showUserProfile ? (
-            <UserProfile email={email} onClose={closeUserProfile} />
+            <UserProfile
+              email={email}
+              onClose={closeUserProfile}
+              onLanguageUpdate={handleLanguageUpdate}
+              currentLanguage={selectedLanguage}
+            />
           ) : selectedUser ? (
             <PrivateSession
               recipientEmail={selectedUser.email}
