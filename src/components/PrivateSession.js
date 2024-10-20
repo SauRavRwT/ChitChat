@@ -137,7 +137,7 @@ function PrivateSession({
           className="btn btn-outline-secondary me-3 rounded-circle"
           onClick={onMinimize}
         >
-          <i className="bi bi-arrow-left"></i>
+          <i className="bi bi-arrow-left w-25"></i>
         </button>
         <img
           src={`https://ui-avatars.com/api/?name=${getRecipientName(
@@ -187,7 +187,7 @@ function PrivateSession({
             >
               <div>{msg.content}</div>
               {msg.translated_content && (
-                <div className="small text-muted mt-1">
+                <div className="small mt-1">
                   <em>{msg.translated_content}</em>
                 </div>
               )}

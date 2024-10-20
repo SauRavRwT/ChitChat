@@ -11,7 +11,7 @@ import {
   getDoc,
   updateDoc,
   onSnapshot,
-} from "firebase/firestore"; // Import Firestore listener
+} from "firebase/firestore";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
@@ -22,7 +22,7 @@ function Home() {
   const navigate = useNavigate();
   const [email, setEmail] = useState(null);
   const [userName, setUserName] = useState("");
-  const [users, setUsers] = useState([]); // This is restored
+  const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState(
     localStorage.getItem("selectedLanguage") || ""
@@ -33,6 +33,7 @@ function Home() {
 
   const connectUser = useCallback(async (name, email, language) => {
     try {
+      const userRef = doc(db, "users", email.toLowerCase());
       await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/connect`, {
         method: "POST",
         headers: {
@@ -40,90 +41,86 @@ function Home() {
         },
         body: JSON.stringify({ name, email, selectedLanguage: language }),
       });
+      await updateDoc(userRef, { language });
 
-      const userRef = doc(db, "users", email.toLowerCase());
-      await updateDoc(userRef, { language: language });
-
-      // Emit socket event to notify others about the language change
+      // Notify others about the language change
       socket.emit("language_updated", { email, language });
     } catch (error) {
       console.error("Error connecting user:", error);
     }
   }, []);
 
+  const fetchUserData = useCallback(
+    async (user) => {
+      const userDocRef = doc(db, "users", user.email.toLowerCase());
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const language = userData.language || selectedLanguage;
+        setUserName(userData.name || user.email.split("@")[0]);
+        setSelectedLanguage(language);
+        localStorage.setItem("selectedLanguage", language);
+        await connectUser(
+          userData.name || user.email.split("@")[0],
+          user.email,
+          language
+        );
+        socket.emit("join", { email: user.email });
+      } else {
+        console.log("No such user document!");
+      }
+    },
+    [connectUser, selectedLanguage]
+  );
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         setEmail(user.email);
-
-        try {
-          const userDocRef = doc(db, "users", user.email.toLowerCase());
-          const userDocSnap = await getDoc(userDocRef);
-
-          if (userDocSnap.exists()) {
-            const userData = userDocSnap.data();
-            setUserName(userData.name || user.email.split("@")[0]);
-            const language = userData.language;
-            if (language) {
-              setSelectedLanguage(language);
-              localStorage.setItem("selectedLanguage", language);
-            }
-            await connectUser(
-              userData.name || user.email.split("@")[0],
-              user.email,
-              language
-            );
-            socket.emit("join", { email: user.email });
-          } else {
-            console.log("No such user document!");
-          }
-        } catch (error) {
-          console.error("Error fetching user data from Firestore:", error);
-        }
+        await fetchUserData(user);
       } else {
         setEmail(null);
         navigate("/login");
       }
     });
 
-    // Firestore real-time listener for language updates
-    if (email) {
-      const userDocRef = doc(db, "users", email.toLowerCase());
-      const unsubscribeLanguageListener = onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const newLanguage = docSnap.data().language;
-          if (newLanguage && newLanguage !== selectedLanguage) {
-            setSelectedLanguage(newLanguage);
-            localStorage.setItem("selectedLanguage", newLanguage);
-          }
-        }
-      });
+    return () => unsubscribe();
+  }, [navigate, fetchUserData]);
 
-      // Clean up the listener when component unmounts
-      return () => {
-        unsubscribe();
-        unsubscribeLanguageListener();
-      };
-    }
-  }, [navigate, email, selectedLanguage, connectUser]);
-
-  // Listen for language updates via socket
   useEffect(() => {
-    socket.on("language_updated", ({ email: updatedEmail, language }) => {
+    if (!email) return;
+
+    const userDocRef = doc(db, "users", email.toLowerCase());
+    const unsubscribeLanguageListener = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const newLanguage = docSnap.data().language;
+        if (newLanguage && newLanguage !== selectedLanguage) {
+          setSelectedLanguage(newLanguage);
+          localStorage.setItem("selectedLanguage", newLanguage);
+        }
+      }
+    });
+
+    return () => unsubscribeLanguageListener();
+  }, [email, selectedLanguage]);
+
+  useEffect(() => {
+    const handleLanguageUpdate = ({ email: updatedEmail, language }) => {
       if (email === updatedEmail) {
         setSelectedLanguage(language);
         localStorage.setItem("selectedLanguage", language);
       }
-    });
+    };
 
-    // Also listen for user updates in real-time and setUsers
-    socket.on("update_users", (updatedUsers) => {
-      setUsers(updatedUsers); // This restores real-time user updates
-    });
+    const handleUpdateUsers = (updatedUsers) => setUsers(updatedUsers);
+
+    socket.on("language_updated", handleLanguageUpdate);
+    socket.on("update_users", handleUpdateUsers);
 
     return () => {
-      socket.off("language_updated");
-      socket.off("update_users");
+      socket.off("language_updated", handleLanguageUpdate);
+      socket.off("update_users", handleUpdateUsers);
     };
   }, [email]);
 
@@ -138,10 +135,7 @@ function Home() {
 
   const selectUser = (user) => {
     setSelectedUser(user);
-    setUnseenMessages((prev) => ({
-      ...prev,
-      [user.email]: 0,
-    }));
+    setUnseenMessages((prev) => ({ ...prev, [user.email]: 0 }));
     setMinimizedChats((prev) =>
       prev.filter((chat) => chat.email !== user.email)
     );
@@ -163,17 +157,10 @@ function Home() {
     }
   };
 
-  const handleProfileClick = () => {
-    setShowUserProfile(true);
-  };
-
-  const closeUserProfile = () => {
-    setShowUserProfile(false);
-  };
-
-  const handleLanguageUpdate = (newLanguage) => {
+  const handleProfileClick = () => setShowUserProfile(true);
+  const closeUserProfile = () => setShowUserProfile(false);
+  const handleLanguageUpdate = (newLanguage) =>
     setSelectedLanguage(newLanguage);
-  };
 
   return (
     <div className="container-fluid vh-100 d-flex flex-column">
@@ -193,11 +180,9 @@ function Home() {
             <h5 className="mb-0">Hello, {userName}</h5>
           </div>
         </div>
-
         <div className="col-4 col-md-2 text-end">
           <p>{selectedLanguage}</p>
         </div>
-
         <div className="col-2 col-md-2 text-end">
           <button className="btn btn-danger rounded-3" onClick={handleLogout}>
             Logout
@@ -275,11 +260,19 @@ function Home() {
             key={chat.email}
             className="bg-light border rounded-5 p-2 ms-2 cursor-pointer"
             onClick={() => selectUser(chat)}
-            style={{ minWidth: "200px" }}
+            style={{ minWidth: "120px" }}
           >
+            <img
+              src={`https://ui-avatars.com/api/?name=${userName}&background=random`}
+              alt={userName}
+              className="rounded-circle me-2"
+              width="40"
+              height="40"
+              onClick={handleProfileClick}
+              style={{ cursor: "pointer" }}
+            />
             <strong>{chat.name}</strong>
-            <br />
-            <small>{chat.email}</small>
+            {/* <small>{chat.email}</small> */}
           </div>
         ))}
       </div>
