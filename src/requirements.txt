@@ -1,0 +1,17 @@
+# Import required packages
+googletrans==4.0.0-rc1
+ttkthemes==3.2.2
+transformers==4.34.0
+TensorFlow==2.17.0
+sentencepiece==0.2.0
+sacremoses==0.1.1
+Flask==2.3.2
+Flask-CORS==3.0.10
+Flask-SocketIO==5.3.4
+transformers==4.34.0
+langid==1.1.6
+torch==2.4.1
+gevent==24.2.1
+eventlet==0.37.0
+
+# pip install -r requirements.txt

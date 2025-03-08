@@ -1,40 +1,91 @@
-# Getting Started with Create React App
+# ChitChat
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+ChitChat is a React app that translates text messages into different languages instantly. It supports real-time text-to-text translation in a chat application.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- Text-to-text conversion
+- Real-time translation
+- Easy-to-use interface
+- Supports multiple languages
 
-### `npm start`
+## Setup
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### Prerequisites
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- [Node.js](https://nodejs.org/)
+- [npm](https://www.npmjs.com/)
+- [Python](https://www.python.org/downloads/)
 
-### `npm test`
+### Installation
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+1. Clone the repository:
 
-### `npm run build`
+   ```sh
+   git clone https://github.com/SauRavRwT/ChitChat.git
+   cd ChitChat
+   ```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+2. Install dependencies:
+   ```sh
+   npm install
+   ```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Scripts
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- `npm start`: Runs the app in development mode at [http://localhost:3000](http://localhost:3000).
+- `npm test`: Runs tests.
+- `npm run build`: Builds the app for production.
+- `npm run eject`: Ejects the build configuration.
 
-### `npm run eject`
+## Server Setup
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+We are using a local server with Python. Follow these steps for installation:
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+> **Note:** If you are using Windows, use the default terminal (Command Prompt). For Debian/RedHat/Fedora, use any terminal.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+1. Create a Python virtual environment:
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+   ```bash
+   mkdir venv  # Create directory
+   python -m venv venv  # Create virtual environment
+   ```
+
+2. Activate the virtual environment:
+
+   ```bash
+   source venv/bin/activate  # For Linux/Mac
+   venv\Scripts\activate  # For Windows
+   ```
+
+3. Install Python dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   pip install --upgrade torch transformers
+   ```
+
+4. Run your Python file:
+
+   ```bash
+   python App.py
+   ```
+
+You are now ready to use the server!
+
+## Connecting React to Local Server
+
+In the project you will see a `env.example` file, create a new file named `.env` and copy contents of `env.example` into it. In that file, you will see the following environment variables
+
+```env
+REACT_APP_BACKEND_URL=http://YOUR_IP_ADDRESS:8080
+```
+
+## Contributors
+
+- ![Ravi kumar thakur](https://avatars.githubusercontent.com/u/100570959?s=64&v=4) [Ravi kumar thakur](https://github.com/Ravithakurofficial)
+- ![Ravita Upadhyay](https://avatars.githubusercontent.com/u/147539414?s=64&v=4) [Ravita Upadhyay](https://github.com/ravitaupadhyay)
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/SauRavRwT/ChitChat/blob/master/LICENSE) file for details.
