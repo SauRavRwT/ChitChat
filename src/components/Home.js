@@ -163,70 +163,80 @@ function Home() {
     setSelectedLanguage(newLanguage);
 
   return (
-    <div className="container-fluid vh-100 d-flex flex-column">
-      <header className="row p-3 bg-light">
-        <div className="col-6 col-md-8 d-flex align-items-center">
-          <h3 className="fw-bold me-3">RTTC</h3>
+    <div className="container-fluid vh-100 d-flex flex-column bg-light">
+      <header className="row py-3 px-4 bg-white shadow-sm">
+        <div className="col-6 col-md-8 d-flex align-items-center gap-4">
+          <h3 className="fw-bold text-primary m-0">Chit Chat</h3>
           <div className="d-flex align-items-center">
-            <img
-              src={`https://ui-avatars.com/api/?name=${userName}&background=random`}
-              alt={userName}
-              className="rounded-circle me-2"
-              width="40"
-              height="40"
-              onClick={handleProfileClick}
-              style={{ cursor: "pointer" }}
-            />
-            <h5 className="mb-0">Hello, {userName}</h5>
+            <div className="position-relative">
+              <img
+                src={`https://ui-avatars.com/api/?name=${userName}&background=random`}
+                alt={userName}
+                className="rounded-circle border border-2 border-primary"
+                width="45"
+                height="45"
+                onClick={handleProfileClick}
+                style={{ cursor: "pointer" }}
+              />
+              <span className="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle"
+                    style={{ width: "12px", height: "12px" }}></span>
+            </div>
+            <div className="ms-3">
+              <h6 className="mb-0 fw-bold">{userName}</h6>
+              <small className="text-muted">{selectedLanguage}</small>
+            </div>
           </div>
         </div>
-        <div className="col-4 col-md-2 text-end">
-          <p>{selectedLanguage}</p>
-        </div>
-        <div className="col-2 col-md-2 text-end">
-          <button className="btn btn-danger rounded-3" onClick={handleLogout}>
-            Logout
+        <div className="col-6 col-md-4 d-flex justify-content-end align-items-center">
+          <button className="btn btn-outline-danger rounded-pill px-4" onClick={handleLogout}>
+            <i className="bi bi-box-arrow-right me-2"></i>Logout
           </button>
         </div>
       </header>
 
       <div className="row flex-grow-1">
-        <div className="col-md-4 col-lg-3 border-end overflow-auto">
-          <h5 className="p-3 fw-bold">Active Users</h5>
-          <ul className="list-group list-group-flush">
+        <div className="col-md-4 col-lg-3 p-0 border-end bg-white" style={{ height: "calc(100vh - 71px)" }}>
+          <div className="p-3 border-bottom">
+            <h5 className="fw-bold mb-0">Active Users</h5>
+          </div>
+          <div className="overflow-auto h-100 px-2">
             {users.map((user) => (
-              <li
+              <div
                 key={user.email}
-                className={`list-group-item list-group-item-action rounded-3 ${
-                  selectedUser?.email === user.email ? "active" : ""
+                className={`d-flex align-items-center p-2 mb-2 rounded-3 ${
+                  selectedUser?.email === user.email ? 'bg-primary bg-opacity-10' : 'hover-bg-light'
                 }`}
                 onClick={() => selectUser(user)}
+                style={{ cursor: "pointer" }}
               >
-                <div className="d-flex align-items-center">
+                <div className="position-relative">
                   <img
                     src={`https://ui-avatars.com/api/?name=${user.name}&background=random`}
                     alt={user.name}
-                    className="rounded-circle me-2"
-                    width="40"
-                    height="40"
+                    className="rounded-circle"
+                    width="50"
+                    height="50"
                   />
-                  <div>
-                    <strong>{user.name}</strong>
-                    <br />
-                    <small>{user.email}</small>
-                  </div>
-                  {unseenMessages[user.email] > 0 && (
-                    <span className="badge bg-danger ms-2">
-                      {unseenMessages[user.email]}
-                    </span>
-                  )}
+                  <span className="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle"
+                        style={{ width: "12px", height: "12px" }}></span>
                 </div>
-              </li>
+                <div className="ms-3 flex-grow-1">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <strong className="text-dark">{user.name}</strong>
+                    {unseenMessages[user.email] > 0 && (
+                      <span className="badge rounded-pill bg-primary">
+                        {unseenMessages[user.email]}
+                      </span>
+                    )}
+                  </div>
+                  <small className="text-muted">{user.email}</small>
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
 
-        <div className="col-md-8 col-lg-9 d-flex flex-column">
+        <div className="col-md-8 col-lg-9 p-0 bg-white">
           {showUserProfile ? (
             <UserProfile
               email={email}
@@ -242,37 +252,36 @@ function Home() {
               onMinimize={handleMinimize}
             />
           ) : (
-            <div className="container d-flex flex-column justify-content-center align-items-center min-vh-100">
-              <div className="row text-center">
-                <h2 className="col-12 mb-3 display-1">RTTC</h2>
-                <p className="col-12 text-muted">
-                  Send and receive messages without keeping your phone online.
-                </p>
-              </div>
+            <div className="d-flex flex-column justify-content-center align-items-center h-100 text-center p-4">
+              <h1 className="display-4 fw-bold text-primary mb-4">Chit Chat</h1>
+              <p className="text-muted w-75">
+                Select a user from the list to start a real-time conversation. 
+                Your messages are translated automatically based on your language preferences.
+              </p>
             </div>
           )}
         </div>
       </div>
 
-      <div className="position-fixed bottom-0 end-0 p-3 d-flex flex-row-reverse">
+      <div className="position-fixed bottom-0 end-0 p-3 d-flex flex-row-reverse gap-2">
         {minimizedChats.map((chat) => (
           <div
             key={chat.email}
-            className="bg-light border rounded-5 p-2 ms-2 cursor-pointer"
+            className="bg-white shadow rounded-3 p-2 cursor-pointer d-flex align-items-center"
             onClick={() => selectUser(chat)}
-            style={{ minWidth: "120px" }}
+            style={{ width: "200px" }}
           >
             <img
-              src={`https://ui-avatars.com/api/?name=${userName}&background=random`}
-              alt={userName}
+              src={`https://ui-avatars.com/api/?name=${chat.name}&background=random`}
+              alt={chat.name}
               className="rounded-circle me-2"
-              width="40"
-              height="40"
-              onClick={handleProfileClick}
-              style={{ cursor: "pointer" }}
+              width="35"
+              height="35"
             />
-            <strong>{chat.name}</strong>
-            {/* <small>{chat.email}</small> */}
+            <div className="flex-grow-1 text-truncate">
+              <strong className="d-block text-truncate">{chat.name}</strong>
+              <small className="text-muted text-truncate">{chat.email}</small>
+            </div>
           </div>
         ))}
       </div>

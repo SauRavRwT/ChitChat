@@ -1,0 +1,11 @@
+eventlet==0.33.3
+Flask==2.2.5
+flask-cors==4.0.0
+flask-socketio==5.3.4
+torch==2.6.0
+tokenizers==0.13.2
+transformers==4.30.2
+
+# Install using:
+# python -m pip install --upgrade pip
+# python -m pip install -r requirements.txt

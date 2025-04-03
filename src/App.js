@@ -1,11 +1,16 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import Login from "./components/Login.js";
 import Home from "./components/Home.js";
 import Signup from "./components/SignUp.js";
 import ProtectedRoute from "./components/ProtectedRoute.js";
 import PrivateSession from "./components/PrivateSession";
-import 'dotenv/config';
+import "dotenv/config";
 
 function App() {
   return (
@@ -22,7 +27,10 @@ function App() {
         />
         <Route path="/signup" element={<Signup />} />
         <Route path="/" element={<Navigate to="/home" />} />
-        <Route path="/private-session/:recipientEmail" element={<PrivateSession />} />
+        <Route
+          path="/private-session/:recipientEmail"
+          element={<PrivateSession />}
+        />
       </Routes>
     </Router>
   );

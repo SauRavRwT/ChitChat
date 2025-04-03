@@ -81,6 +81,8 @@ In the project you will see a `env.example` file, create a new file named `.env`
 REACT_APP_BACKEND_URL=http://YOUR_IP_ADDRESS:8080
 ```
 
+Note: Want to know your ip address? Type command `ipconfig` in terminal
+
 ## Contributors
 
 - ![Ravi kumar thakur](https://avatars.githubusercontent.com/u/100570959?s=64&v=4) [Ravi kumar thakur](https://github.com/Ravithakurofficial)
