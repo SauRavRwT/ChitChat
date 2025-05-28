@@ -5,13 +5,13 @@ import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDjs_Gr6PX-LuHldy_hwrLqQSvE2JmJ0yI",
-  authDomain: "contactform-6997f.firebaseapp.com",
-  databaseURL: "https://contactform-6997f-default-rtdb.firebaseio.com",
-  projectId: "contactform-6997f",
-  storageBucket: "contactform-6997f.appspot.com",
-  messagingSenderId: "167892845994",
-  appId: "1:167892845994:web:2d27f6d5cf773bd32657d3",
+  apiKey: "your_api_key",
+  authDomain: "your_auth_domain",
+  databaseURL: "your_database_url",
+  projectId: "your_project_id",
+  storageBucket: "your_storage_bucket",
+  messagingSenderId: "your_messaging_sender_id",
+  appId: "your_app_id",
 };
 
 // Initialize Firebase

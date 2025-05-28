@@ -2,12 +2,16 @@
 
 ChitChat is a React app that translates text messages into different languages instantly. It supports real-time text-to-text translation in a chat application.
 
+![ChitChat](./Images/chat-1.png)
+
 ## Features
 
 - Text-to-text conversion
 - Real-time translation
 - Easy-to-use interface
 - Supports multiple languages
+
+![ChitChat](./Images/chat-2.png)
 
 ## Setup
 
@@ -30,6 +34,25 @@ ChitChat is a React app that translates text messages into different languages i
    ```sh
    npm install
    ```
+3. **Set Up Firebase**:
+   - Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
+      - Register a web app within your Firebase project.
+      - Enable Firebase Authentication and set up the desired sign-in methods.
+      - Copy the Firebase configuration and create a `firebase.js` file in the project directory:
+
+        ```javascript
+        // firebase.js
+        export const firebaseConfig = {
+          apiKey: "your_api_key",
+          authDomain: "your_auth_domain",
+          databaseURL: "your_database_url",
+          projectId: "your_project_id",
+          storageBucket: "your_storage_bucket",
+          messagingSenderId: "your_messaging_sender_id",
+          appId: "your_app_id"
+        };
+        ```
+
 
 ### Scripts
 
