@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from "socket.io-client";
 
-const socket = io(process.env.REACT_APP_BACKEND_URL);
+const socket = io(import.meta.env.VITE_BACKEND_URL);
 
 function PrivateSession({
   recipientEmail,
@@ -41,6 +41,13 @@ function PrivateSession({
   }, [storageKey]);
 
   useEffect(() => {
+    if (
+      !currentUserEmail ||
+      currentUserEmail.trim().toLowerCase() === recipientEmail.trim().toLowerCase()
+    ) {
+      return undefined;
+    }
+
     socket.emit("join_private_room", {
       email: currentUserEmail,
       recipientEmail,
@@ -97,7 +104,11 @@ function PrivateSession({
 
   const sendMessage = (e) => {
     e.preventDefault();
-    if (newMessage.trim() && currentUserEmail) {
+    if (
+      newMessage.trim() &&
+      currentUserEmail &&
+      currentUserEmail.trim().toLowerCase() !== recipientEmail.trim().toLowerCase()
+    ) {
       const messageData = {
         sender: currentUserEmail,
         recipient: recipientEmail,
@@ -131,88 +142,51 @@ function PrivateSession({
   }, [loadMessagesFromStorage]);
 
   return (
-    <div className="d-flex flex-column h-100">
-      <div className="p-3 border-bottom d-flex align-items-center">
-        <button
-          className="btn btn-outline-secondary me-3 rounded-circle"
-          onClick={onMinimize}
-        >
-          <i className="bi bi-arrow-left w-25"></i>
-        </button>
-        <img
-          src={`https://ui-avatars.com/api/?name=${getRecipientName(
-            recipientEmail
-          )}&background=random`}
-          alt={getRecipientName(recipientEmail)}
-          className="rounded-circle me-2"
-          width="40"
-          height="40"
-        />
-        <div className="d-flex flex-column">
-          <h4
-            className="mb-0 text-truncate"
-            style={{ maxWidth: "150px" }}
-            title={getRecipientName(recipientEmail)}
-          >
-            {getRecipientName(recipientEmail)}
-          </h4>
-          <small
-            className="text-muted text-truncate"
-            style={{ maxWidth: "150px" }}
-            title={recipientEmail}
-          >
-            {recipientEmail}
-          </small>
+    <div className="conversation-view">
+      <header className="conversation-header">
+        <button className="icon-button back-button" type="button" onClick={onMinimize} aria-label="Minimize conversation">←</button>
+        <span className="avatar-wrap conversation-avatar">
+          <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(getRecipientName(recipientEmail))}&background=7778ed&color=fff`} alt="" />
+          <span className="online-dot" />
+        </span>
+        <div className="conversation-person">
+          <strong>{getRecipientName(recipientEmail)}</strong>
+          <span><i /> Active now</span>
         </div>
-      </div>
+        <span className="secure-label">✦ Private conversation</span>
+      </header>
 
-      <div
-        className="flex-grow-1 overflow-auto p-3"
-        style={{ maxHeight: "calc(100vh - 210px)" }}
-      >
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`mb-2 ${
-              msg.sender === currentUserEmail ? "text-end" : "text-start"
-            }`}
-          >
-            <div
-              className={`d-inline-block p-2 rounded-4 ${
-                msg.sender === currentUserEmail
-                  ? "bg-primary text-white"
-                  : "bg-secondary text-white"
-              }`}
-              style={{ maxWidth: "80%", wordWrap: "break-word" }}
-            >
-              <div>{msg.content}</div>
-              {msg.translated_content && (
-                <div className="small mt-1">
-                  <em>{msg.translated_content}</em>
-                </div>
-              )}
+      <div className="message-list">
+        {messages.length === 0 && (
+          <div className="chat-first-message"><span>✦</span><strong>Make the first move</strong><p>Send a message to start your conversation.</p></div>
+        )}
+        {messages.map((msg, index) => {
+          const ownMessage = msg.sender === currentUserEmail;
+          return (
+            <div key={`${msg.timestamp}-${index}`} className={`message-row ${ownMessage ? "message-own" : ""}`}>
+              <div className="message-bubble">
+                <div>{msg.content}</div>
+                {msg.translated_content && <div className="translated-message"><span>↳</span> {msg.translated_content}</div>}
+              </div>
+              <time>{new Date(msg.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time>
             </div>
-            <div className="small text-muted mt-1">
-              {new Date(msg.timestamp).toLocaleString()}
-            </div>
-          </div>
-        ))}
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={sendMessage} className="p-3 border-top mt-auto">
-        <div className="input-group">
+      <form onSubmit={sendMessage} className="message-composer">
+        <div className="composer-shell">
           <input
             type="text"
-            className="form-control rounded-start"
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type your message..."
+            onChange={(event) => setNewMessage(event.target.value)}
+            placeholder="Write a message…"
+            aria-label="Write a message"
           />
-          <button type="submit" className="btn btn-success rounded-end">
-            Send
-          </button>
+          <button type="submit" className="send-button" aria-label="Send message" disabled={!newMessage.trim()}>↑</button>
         </div>
+        <span className="composer-hint">Your message will be translated automatically</span>
       </form>
     </div>
   );

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate } from "react-router-dom";
 import { auth } from "../Firebase.js";
 import { signOut } from "firebase/auth";
 import { io } from "socket.io-client";
 import PrivateSession from "./PrivateSession";
 import UserProfile from "./UserProfile";
+import ThemeToggle from "./ThemeToggle";
 import {
   getFirestore,
   doc,
@@ -12,13 +13,13 @@ import {
   updateDoc,
   onSnapshot,
 } from "firebase/firestore";
-import "bootstrap/dist/css/bootstrap.min.css";
-import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
-const socket = io(process.env.REACT_APP_BACKEND_URL);
+const socket = io(import.meta.env.VITE_BACKEND_URL);
 const db = getFirestore();
+const normalizeEmail = (value) =>
+  typeof value === "string" ? value.trim().toLowerCase() : "";
 
-function Home() {
+function Home({ theme, onToggleTheme }) {
   const navigate = useNavigate();
   const [email, setEmail] = useState(null);
   const [userName, setUserName] = useState("");
@@ -30,11 +31,14 @@ function Home() {
   const [unseenMessages, setUnseenMessages] = useState({});
   const [minimizedChats, setMinimizedChats] = useState([]);
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const onlineUsers = users.filter(
+    (user) => normalizeEmail(user.email) !== normalizeEmail(email)
+  );
 
   const connectUser = useCallback(async (name, email, language) => {
     try {
       const userRef = doc(db, "users", email.toLowerCase());
-      await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/connect`, {
+      await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/connect`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -134,6 +138,8 @@ function Home() {
   };
 
   const selectUser = (user) => {
+    if (normalizeEmail(user.email) === normalizeEmail(email)) return;
+
     setSelectedUser(user);
     setUnseenMessages((prev) => ({ ...prev, [user.email]: 0 }));
     setMinimizedChats((prev) =>
@@ -163,88 +169,63 @@ function Home() {
     setSelectedLanguage(newLanguage);
 
   return (
-    <div className="container-fluid vh-100 d-flex flex-column bg-light">
-      <header className="row py-3 px-4 bg-white shadow-sm">
-        <div className="col-6 col-md-8 d-flex align-items-center gap-4">
-          <h3 className="fw-bold text-primary m-0">Chit Chat</h3>
-          <div className="d-flex align-items-center">
-            <div className="position-relative">
-              <img
-                src={`https://ui-avatars.com/api/?name=${userName}&background=random`}
-                alt={userName}
-                className="rounded-circle border border-2 border-primary"
-                width="45"
-                height="45"
-                onClick={handleProfileClick}
-                style={{ cursor: "pointer" }}
-              />
-              <span className="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle"
-                    style={{ width: "12px", height: "12px" }}></span>
-            </div>
-            <div className="ms-3">
-              <h6 className="mb-0 fw-bold">{userName}</h6>
-              <small className="text-muted">{selectedLanguage}</small>
-            </div>
-          </div>
-        </div>
-        <div className="col-6 col-md-4 d-flex justify-content-end align-items-center">
-          <button className="btn btn-outline-danger rounded-pill px-4" onClick={handleLogout}>
-            <i className="bi bi-box-arrow-right me-2"></i>Logout
+    <main className="chat-app">
+      <header className="topbar glass-panel">
+        <Link className="brand-lockup" to="/home">
+          <span className="brand-mark">C</span>
+          <span>chitchat</span>
+        </Link>
+        <div className="topbar-actions">
+          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+          <button className="user-pill" type="button" onClick={handleProfileClick} aria-label="Open your profile">
+            <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userName || "User")}&background=7778ed&color=fff`} alt="" />
+            <span className="user-pill-copy"><strong>{userName || "Your profile"}</strong><small>{selectedLanguage || "Choose a language"}</small></span>
+            <span className="online-dot" />
           </button>
+          <button className="icon-button logout-button" type="button" onClick={handleLogout} aria-label="Sign out" title="Sign out">↗</button>
         </div>
       </header>
 
-      <div className="row flex-grow-1">
-        <div className="col-md-4 col-lg-3 p-0 border-end bg-white" style={{ height: "calc(100vh - 71px)" }}>
-          <div className="p-3 border-bottom">
-            <h5 className="fw-bold mb-0">Active Users</h5>
+      <section className="workspace">
+        <aside className="people-panel glass-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">YOUR SPACE</span>
+              <h1>Messages</h1>
+            </div>
+            <span className="online-count">{onlineUsers.length}</span>
           </div>
-          <div className="overflow-auto h-100 px-2">
-            {users.map((user) => (
-              <div
+          <div className="people-section-label"><span>ONLINE NOW</span><span className="live-indicator">LIVE</span></div>
+          <div className="people-list">
+            {onlineUsers.map((user) => (
+              <button
                 key={user.email}
-                className={`d-flex align-items-center p-2 mb-2 rounded-3 ${
-                  selectedUser?.email === user.email ? 'bg-primary bg-opacity-10' : 'hover-bg-light'
-                }`}
+                type="button"
+                className={`person-row ${selectedUser?.email === user.email ? "person-selected" : ""}`}
                 onClick={() => selectUser(user)}
-                style={{ cursor: "pointer" }}
               >
-                <div className="position-relative">
-                  <img
-                    src={`https://ui-avatars.com/api/?name=${user.name}&background=random`}
-                    alt={user.name}
-                    className="rounded-circle"
-                    width="50"
-                    height="50"
-                  />
-                  <span className="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle"
-                        style={{ width: "12px", height: "12px" }}></span>
-                </div>
-                <div className="ms-3 flex-grow-1">
-                  <div className="d-flex justify-content-between align-items-center">
-                    <strong className="text-dark">{user.name}</strong>
-                    {unseenMessages[user.email] > 0 && (
-                      <span className="badge rounded-pill bg-primary">
-                        {unseenMessages[user.email]}
-                      </span>
-                    )}
-                  </div>
-                  <small className="text-muted">{user.email}</small>
-                </div>
-              </div>
+                <span className="avatar-wrap">
+                  <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=7778ed&color=fff`} alt="" />
+                  <span className="online-dot" />
+                </span>
+                <span className="person-copy"><strong>{user.name}</strong><small>{user.email}</small></span>
+                {unseenMessages[user.email] > 0 && <span className="unread-count">{unseenMessages[user.email]}</span>}
+              </button>
             ))}
+            {onlineUsers.length === 0 && (
+              <div className="empty-people">
+                <span className="empty-icon">✦</span>
+                <strong>It's quiet in here</strong>
+                <span>Online friends will appear here.</span>
+              </div>
+            )}
           </div>
-        </div>
+          <div className="sidebar-footer"><span className="online-dot" /> Your conversations, translated</div>
+        </aside>
 
-        <div className="col-md-8 col-lg-9 p-0 bg-white">
-          {showUserProfile ? (
-            <UserProfile
-              email={email}
-              onClose={closeUserProfile}
-              onLanguageUpdate={handleLanguageUpdate}
-              currentLanguage={selectedLanguage}
-            />
-          ) : selectedUser ? (
+        <section className="conversation-panel glass-panel">
+          {selectedUser &&
+          normalizeEmail(selectedUser.email) !== normalizeEmail(email) ? (
             <PrivateSession
               recipientEmail={selectedUser.email}
               currentUserEmail={email}
@@ -252,40 +233,40 @@ function Home() {
               onMinimize={handleMinimize}
             />
           ) : (
-            <div className="d-flex flex-column justify-content-center align-items-center h-100 text-center p-4">
-              <h1 className="display-4 fw-bold text-primary mb-4">Chit Chat</h1>
-              <p className="text-muted w-75">
-                Select a user from the list to start a real-time conversation. 
-                Your messages are translated automatically based on your language preferences.
-              </p>
+            <div className="welcome-state">
+              <div className="welcome-orbit orbit-one" />
+              <div className="welcome-orbit orbit-two" />
+              <div className="welcome-art">
+                <span className="welcome-bubble bubble-left">你好</span>
+                <span className="welcome-bubble bubble-right">Hello!</span>
+                <span className="welcome-sparkle">✦</span>
+              </div>
+              <span className="eyebrow">A WORLD OF WORDS, ONE CHAT AWAY</span>
+              <h2>Say hello to<br /><span>someone new.</span></h2>
+              <p>Choose someone online and let the conversation flow. Your messages are translated automatically into their language.</p>
+              <div className="translation-note"><span>文</span><span>Messages translated to {selectedLanguage || "your language"}</span></div>
             </div>
           )}
-        </div>
-      </div>
+        </section>
+      </section>
 
-      <div className="position-fixed bottom-0 end-0 p-3 d-flex flex-row-reverse gap-2">
-        {minimizedChats.map((chat) => (
-          <div
-            key={chat.email}
-            className="bg-white shadow rounded-3 p-2 cursor-pointer d-flex align-items-center"
-            onClick={() => selectUser(chat)}
-            style={{ width: "200px" }}
-          >
-            <img
-              src={`https://ui-avatars.com/api/?name=${chat.name}&background=random`}
-              alt={chat.name}
-              className="rounded-circle me-2"
-              width="35"
-              height="35"
-            />
-            <div className="flex-grow-1 text-truncate">
-              <strong className="d-block text-truncate">{chat.name}</strong>
-              <small className="text-muted text-truncate">{chat.email}</small>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+      {minimizedChats.length > 0 && (
+        <div className="minimized-chats">
+          {minimizedChats.map((chat) => (
+            <button key={chat.email} type="button" className="minimized-chat glass-panel" onClick={() => selectUser(chat)}>
+              <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(chat.name)}&background=7778ed&color=fff`} alt="" />
+              <span><strong>{chat.name}</strong><small>Tap to reopen</small></span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showUserProfile && (
+        <div className="profile-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) closeUserProfile(); }}>
+          <UserProfile email={email} onClose={closeUserProfile} onLanguageUpdate={handleLanguageUpdate} currentLanguage={selectedLanguage} />
+        </div>
+      )}
+    </main>
   );
 }
 

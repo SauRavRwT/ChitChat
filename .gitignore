@@ -11,6 +11,12 @@
 
 # production
 /build
+/dist
+
+# environment variables
+.env
+.venv
+venv/
 
 # misc
 .DS_Store
